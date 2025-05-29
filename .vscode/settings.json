@@ -8,7 +8,7 @@
         "C_Cpp.default.cppStandard": "c++14",
         "C_Cpp.default.cStandard": "c11",
         "C_Cpp.formatting": "Disabled",
-        "C_Cpp.intelliSenseEngine": "Default",
+        "C_Cpp.intelliSenseEngine": "disabled",
         "C_Cpp.vcpkg.enabled": false,
         "C_Cpp.workspaceParsingPriority": "low",
         "cmake.buildBeforeRun": true,
@@ -35,7 +35,7 @@
         "editor.minimap.renderCharacters": false,
         "editor.minimap.showSlider": "always",
         "editor.suggest.localityBonus": true,
-        "editor.tabSize": 8,
+        "editor.tabSize": 2,
         "editor.wordWrapColumn": 120,
         "explorer.openEditors.visible": 0,
         "files.insertFinalNewline": true,
@@ -128,5 +128,24 @@
         "terminal.integrated.scrollback": 15000,
         "yaml.schemas": {
                 "${workspaceFolder}/validation/module_schema.yaml": "${workspaceFolder}/src/modules/*/module.yaml"
+        },
+        "python.autoComplete.extraPaths": [
+                "/home/jay-jie/catkin_ws/install/px4_msgs/local/lib/python3.10/dist-packages",
+                "/opt/ros/humble/lib/python3.10/site-packages",
+                "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        ],
+        "python.analysis.extraPaths": [
+                "/home/jay-jie/catkin_ws/install/px4_msgs/local/lib/python3.10/dist-packages",
+                "/opt/ros/humble/lib/python3.10/site-packages",
+                "/opt/ros/humble/local/lib/python3.10/dist-packages"
+        ],
+        "C_Cpp.autocomplete": "default",
+        "C_Cpp.clang_format_sortIncludes": false,
+        "clangd.arguments": [
+                "--compile-commands-dir=${workspaceFolder}/build/px4_fmu-v5_default"
+        ],
+        "clangd.enableHover": false,
+        "[cpp]": {
+                "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
         },
 }

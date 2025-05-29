@@ -9,6 +9,10 @@ if DRIVERS_ACTUATORS_VERTIQ_IO
 	bool "Include IFCI Configuration Parameters"
 	default n
 
+	config VERTIQ_IO_TESTING
+        bool "Enable Vertiq IO Testing Flag"
+        default n
+
 	if USE_IFCI_CONFIGURATION
 		config USE_PULSING_CONFIGURATION
 		bool "Include Pulsing Module Configuration Parameters"

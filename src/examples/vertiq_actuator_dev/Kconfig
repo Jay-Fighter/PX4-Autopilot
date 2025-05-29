@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_VERTIQ_ACTUATOR_DEV
+	bool "voltage_superposition_helper"
+	default y
+	---help---
+		Enable support for voltage superposition test

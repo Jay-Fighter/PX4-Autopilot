@@ -53,6 +53,7 @@
 #ifdef CONFIG_USE_PULSING_CONFIGURATION
 #include "iq-module-communication-cpp/inc/voltage_superposition_client.hpp"
 #include "iq-module-communication-cpp/inc/pulsing_rectangular_input_parser_client.hpp"
+#include <uORB/topics/vertiq_voltage_superposition_cmd.h>
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 
 class VertiqConfigurationHandler
@@ -113,7 +114,19 @@ public:
 	*/
 	void InitConfigurationClients(uint8_t object_id);
 
-	/**
+#ifdef CONFIG_USE_PULSING_CONFIGURATION
+
+    /**
+	 * @brief Set the Voltage Superposition Cmd object
+	 * @param cmd
+	 * @return true
+	 * @return false
+	 */
+    bool SetVoltageSuperpositionCmd(const vertiq_voltage_superposition_cmd_s& cmd);
+
+#endif  //CONFIG_USE_PULSING_CONFIGURATION
+
+    /**
 	 * @brief Delete and recreate a client with a new object ID
 	 *
 	 * @tparam client_type The actual type of Client you want to delete and remake

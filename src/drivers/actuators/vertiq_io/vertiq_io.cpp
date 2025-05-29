@@ -44,7 +44,8 @@ VertiqIo::VertiqIo(const char *port) :
 	_configuration_handler(&_serial_interface, &_client_manager),
 	_broadcast_prop_motor_control(_kBroadcastID),
 	_broadcast_arming_handler(_kBroadcastID),
-	_operational_ifci(_kBroadcastID)
+	_operational_ifci(_kBroadcastID),
+	_operational_voltage_superposition(_kBroadcastID)
 {
 	// store port name
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -61,6 +62,8 @@ VertiqIo::VertiqIo(const char *port) :
 	_client_manager.AddNewClient(&_operational_ifci);
 	_client_manager.AddNewClient(&_broadcast_arming_handler);
 	_client_manager.AddNewClient(&_broadcast_prop_motor_control);
+	_client_manager.AddNewClient(&_operational_voltage_superposition);
+
 }
 
 VertiqIo::~VertiqIo()
@@ -183,18 +186,64 @@ void VertiqIo::parameters_update()
 	}
 }
 
-void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS])
-{
-	//Put the mixer outputs into the output message
-	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
-		_transmission_message.commands[i] = outputs[i];
-	}
+// void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS])
+// {
+// 	//Put the mixer outputs into the output message
+// 	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+// 		_transmission_message.commands[i] = outputs[i];
+// 	}
+// 	PX4_INFO("Number of clients: %hhu", _client_manager.GetNumberOfClients());
 
-	_operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
-	_operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
-	_serial_interface.ProcessSerialTx();
+// 	_operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
+// 	_operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
+// 	_serial_interface.ProcessSerialTx();
+// }
+
+// void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS])
+// {
+// 	//Put the mixer outputs into the output message
+// 	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+// 		_transmission_message.commands[i] = outputs[i];
+// 	}
+
+// 	_broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), 300.0f);
+// 	_operational_voltage_superposition.phase_.set(*_serial_interface.GetIquartInterface(), 0.0f);
+// 	_operational_voltage_superposition.amplitude_.set(*_serial_interface.GetIquartInterface(), 3.0f);
+// 	_serial_interface.ProcessSerialTx();
+// 	//TODO 了解下广播控制
+// 	//TODO 多个电机就用id号区分，可以试一下广播是不是可以直接发布给全部电机
+// }
+
+void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
+    //Put the mixer outputs into the output message
+    for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+        _transmission_message.commands[i] = outputs[i];
+    }
+
+#ifdef CONFIG_VERTIQ_IO_TESTING
+    //set the vertiq actuator control velocity
+    float control_velocity = _param_vertiq_control_velocity.get();
+    _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), control_velocity);
+
+    //set the amplitude and phase
+    vertiq_voltage_superposition_cmd_s cmd{};
+    cmd.amplitude = _param_vertiq_voltage_superposition_amplitude.get();
+    cmd.phase = _param_vertiq_voltage_superposition_phase.get();
+    _configuration_handler.SetVoltageSuperpositionCmd(cmd);
+    // PX4_INFO("Voltage superposition amplitude: %.3f", (double)cmd.amplitude);
+    // PX4_INFO("Voltage superposition phase: %.3f", (double)cmd.phase);
+    // PX4_INFO("Voltage superposition vel: %.3f", (double)control_velocity);
+    cmd.timestamp = hrt_absolute_time();
+    _vertiq_voltage_superposition_cmd_pub.publish(cmd);
+
+#else
+    //TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来
+    _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), 300.0f);
+    _configuration_handler.SetVoltageSuperpositionAmplitude(0.0f);
+    _configuration_handler.SetVoltageSuperpositionPhase(0.0f);
+    _serial_interface.ProcessSerialTx();
+#endif
 }
-
 bool VertiqIo::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs,
 			     unsigned num_control_groups_updated)
 {
@@ -248,6 +297,16 @@ bool VertiqIo::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], 
 	_esc_status_pub.publish(_telem_manager.GetEscStatus());
 #endif
 	return true;
+}
+
+void VertiqIo::publish_ifci_packet(IFCIPackedMessage  *ifci_commands){
+	vertiq_ifci_packet_s vertiq_ifci_packet;
+	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+		vertiq_ifci_packet.commands[i] = _transmission_message.commands[i];
+	}
+	vertiq_ifci_packet.num_cvs = _transmission_message.num_cvs;
+	vertiq_ifci_packet.timestamp = hrt_absolute_time();
+	_vertiq_ifci_packet_pub.publish(vertiq_ifci_packet);
 }
 
 void VertiqIo::print_info()

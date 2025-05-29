@@ -287,3 +287,31 @@ parameters:
                 30: Module ID 62
             reboot_required: true
             default: 0
+        VTQ_VSP_AMP_JAY:
+            description:
+                short: Module Param - Amplitude during voltage superposition control
+                long: |
+                    Relevant only in voltage superposition client. This is the amplitude of the pulse voltage
+            type: float
+            default: 0
+            min: 0.0
+            max: 5.0
+        VTQ_VSP_PHA_JAY:
+            description:
+                short: Module Param - Phase during voltage superposition control
+                long: |
+                    Relevant only in voltage superposition client. This is the amplitude of the pulse voltage
+            type: float
+            default: 0
+            min: 0.0
+            max: 6.283
+        VTQ_VSP_VELO_JAY:
+            description:
+                short: Module Param - Velocity during voltage superposition control(rad/s)
+                long: |
+                    Relevant only in voltage superposition client. This is the velocity that you want to set for the module.
+            type: float
+            default: 0
+            min: 0.0
+            max: 1000
+

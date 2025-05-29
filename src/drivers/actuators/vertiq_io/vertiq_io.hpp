@@ -47,7 +47,10 @@
 #include <uORB/topics/led_control.h>
 #include <uORB/topics/esc_status.h>
 #include <uORB/topics/actuator_test.h>
+#include <uORB/topics/vertiq_ifci_packet.h>
+#include <uORB/topics/vertiq_voltage_superposition_cmd.h>
 
+#include "uORB/Publication.hpp"
 #include "vertiq_telemetry_manager.hpp"
 #include "vertiq_client_manager.hpp"
 #include "vertiq_serial_interface.hpp"
@@ -148,6 +151,7 @@ private:
 	PropellerMotorControlClient _broadcast_prop_motor_control;
 	ArmingHandlerClient _broadcast_arming_handler;
 	IQUartFlightControllerInterfaceClient _operational_ifci;
+	VoltageSuperPositionClient _operational_voltage_superposition;
 	IFCIPackedMessage _transmission_message;
 	static const uint16_t MAX_IFCI_MESSAGE = 40; //Up to 16 2 byte commands, one telemetry byte, plus 7 IQUART added bytes
 	uint8_t _output_message[MAX_IFCI_MESSAGE];
@@ -202,6 +206,13 @@ private:
 		, (ParamFloat<px4::params::VTQ_VELO_CUTOFF>) _param_vertiq_pulse_velo_cutoff
 		, (ParamFloat<px4::params::VTQ_TQUE_OFF_ANG>) _param_vertiq_pulse_torque_offset_angle
 		, (ParamFloat<px4::params::VTQ_PULSE_V_LIM>) _param_vertiq_pulse_voltage_limit
+		, (ParamFloat<px4::params::VTQ_VSP_AMP_JAY>) _param_vertiq_voltage_superposition_amplitude
+		, (ParamFloat<px4::params::VTQ_VSP_PHA_JAY>) _param_vertiq_voltage_superposition_phase
+		, (ParamFloat<px4::params::VTQ_VSP_VELO_JAY>) _param_vertiq_control_velocity
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 	)
+
+	uORB::Publication<vertiq_ifci_packet_s> _vertiq_ifci_packet_pub{ORB_ID(vertiq_ifci_packet)};
+	uORB::Publication<vertiq_voltage_superposition_cmd_s> _vertiq_voltage_superposition_cmd_pub{ORB_ID(vertiq_voltage_superposition_cmd)};
+	void publish_ifci_packet(IFCIPackedMessage *ifci_commands);
 };

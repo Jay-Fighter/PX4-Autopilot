@@ -289,6 +289,10 @@ void LoggedTopics::add_debug_topics()
 	add_topic("mag_worker_data");
 	add_topic("sensor_preflight_mag", 500);
 	add_topic("actuator_test", 500);
+
+	//vertiq testing record uorb topics
+	add_topic("vertiq_ifci_packet", 200);
+	add_topic("vertiq_voltage_superposition_cmd", 200);
 }
 
 void LoggedTopics::add_estimator_replay_topics()
