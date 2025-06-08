@@ -33,6 +33,8 @@
 #include "vertiq_io.hpp"
 
 #include <px4_platform_common/log.h>
+#include <unistd.h>
+#include <cstdint>
 
 px4::atomic_bool VertiqIo::_request_telemetry_init{false};
 
@@ -148,6 +150,9 @@ void VertiqIo::Run()
 
 		//Our test is active if anyone is giving us commands through the actuator test
 		_actuator_test_active = _actuator_test.action == actuator_test_s::ACTION_DO_CONTROL;
+		PX4_INFO("1 _actuator_test_active: %s", _actuator_test_active ? "true" : "false");
+
+
 	}
 
 	//stop our timer
@@ -192,7 +197,6 @@ void VertiqIo::parameters_update()
 // 	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
 // 		_transmission_message.commands[i] = outputs[i];
 // 	}
-// 	PX4_INFO("Number of clients: %hhu", _client_manager.GetNumberOfClients());
 
 // 	_operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
 // 	_operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
@@ -214,30 +218,49 @@ void VertiqIo::parameters_update()
 // 	//TODO 多个电机就用id号区分，可以试一下广播是不是可以直接发布给全部电机
 // }
 
+/* add by yongjie zheng*/
 void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
-    //Put the mixer outputs into the output message
-    for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
-        _transmission_message.commands[i] = outputs[i];
-    }
 
 #ifdef CONFIG_VERTIQ_IO_TESTING
-    //set the vertiq actuator control velocity
-    float control_velocity = _param_vertiq_control_velocity.get();
-    _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), control_velocity);
+    bool vertiq_test_active = outputs[0] > 10000 ? true : false;
+    if (vertiq_test_active) {
+        //set the vertiq actuator control velocity and convert rpm to rad/s
+        const float control_velocity_rad_s = _param_vertiq_control_velocity.get() * 2.0f * (float)M_PI / 60.0f;
 
-    //set the amplitude and phase
-    vertiq_voltage_superposition_cmd_s cmd{};
-    cmd.amplitude = _param_vertiq_voltage_superposition_amplitude.get();
-    cmd.phase = _param_vertiq_voltage_superposition_phase.get();
-    _configuration_handler.SetVoltageSuperpositionCmd(cmd);
-    // PX4_INFO("Voltage superposition amplitude: %.3f", (double)cmd.amplitude);
-    // PX4_INFO("Voltage superposition phase: %.3f", (double)cmd.phase);
-    // PX4_INFO("Voltage superposition vel: %.3f", (double)control_velocity);
-    cmd.timestamp = hrt_absolute_time();
-    _vertiq_voltage_superposition_cmd_pub.publish(cmd);
+        // Set velocity control
+        _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), control_velocity_rad_s);
+
+        //set voltage superposition
+        vertiq_voltage_superposition_cmd_s cmd{};
+        const float amplitude = _param_vertiq_voltage_superposition_amplitude.get();
+        const float phase = _param_vertiq_voltage_superposition_phase.get();
+        _operational_voltage_superposition.amplitude_.set(*_serial_interface.GetIquartInterface(), cmd.amplitude);
+        _operational_voltage_superposition.phase_.set(*_serial_interface.GetIquartInterface(), cmd.phase);
+        // _configuration_handler.SetVoltageSuperpositionCmd(cmd);
+
+        // Publish cmd message
+        cmd.velocity_setpoint = _param_vertiq_control_velocity.get();  // in rpm
+        cmd.amplitude = amplitude;
+        cmd.phase = phase;
+        cmd.timestamp = hrt_absolute_time();
+        _vertiq_voltage_superposition_cmd_pub.publish(cmd);
+
+        // Set IFCI command to get telemetry uorb(esc_status)
+        for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+            _transmission_message.commands[i] = outputs[i];
+        }
+
+        _operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
+        _operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
+        _serial_interface.ProcessSerialTx();
+    } else {
+        // If inactive, apply brake
+        _broadcast_prop_motor_control.ctrl_brake_.set(*_serial_interface.GetIquartInterface());
+        _serial_interface.ProcessSerialTx();
+    }
 
 #else
-    //TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来
+    //TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来 注意转速的单位
     _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), 300.0f);
     _configuration_handler.SetVoltageSuperpositionAmplitude(0.0f);
     _configuration_handler.SetVoltageSuperpositionPhase(0.0f);

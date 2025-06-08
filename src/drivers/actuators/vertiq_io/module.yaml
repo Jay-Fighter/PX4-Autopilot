@@ -303,15 +303,15 @@ parameters:
                     Relevant only in voltage superposition client. This is the amplitude of the pulse voltage
             type: float
             default: 0
-            min: 0.0
+            min: -6.283
             max: 6.283
         VTQ_VSP_VELO_JAY:
             description:
-                short: Module Param - Velocity during voltage superposition control(rad/s)
+                short: Module Param - Velocity during voltage superposition control(rpm)
                 long: |
                     Relevant only in voltage superposition client. This is the velocity that you want to set for the module.
             type: float
             default: 0
             min: 0.0
-            max: 1000
+            max: 5000
 
