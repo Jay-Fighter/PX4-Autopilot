@@ -44,10 +44,10 @@ VertiqIo::VertiqIo(const char *port) :
 	_client_manager(&_serial_interface),
 	_telem_manager(&_client_manager),
 	_configuration_handler(&_serial_interface, &_client_manager),
+	_test_interface(&_serial_interface,&_client_manager),
 	_broadcast_prop_motor_control(_kBroadcastID),
 	_broadcast_arming_handler(_kBroadcastID),
-	_operational_ifci(_kBroadcastID),
-	_operational_voltage_superposition(_kBroadcastID)
+	_operational_ifci(_kBroadcastID)
 {
 	// store port name
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -64,7 +64,6 @@ VertiqIo::VertiqIo(const char *port) :
 	_client_manager.AddNewClient(&_operational_ifci);
 	_client_manager.AddNewClient(&_broadcast_arming_handler);
 	_client_manager.AddNewClient(&_broadcast_prop_motor_control);
-	_client_manager.AddNewClient(&_operational_voltage_superposition);
 
 }
 
@@ -150,7 +149,6 @@ void VertiqIo::Run()
 
 		//Our test is active if anyone is giving us commands through the actuator test
 		_actuator_test_active = _actuator_test.action == actuator_test_s::ACTION_DO_CONTROL;
-		PX4_INFO("1 _actuator_test_active: %s", _actuator_test_active ? "true" : "false");
 
 
 	}
@@ -196,6 +194,7 @@ void VertiqIo::parameters_update()
 // 	//Put the mixer outputs into the output message
 // 	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
 // 		_transmission_message.commands[i] = outputs[i];
+// 		PX4_INFO("VertiqIo: commands[%u] = %u", (unsigned)i, (unsigned)_transmission_message.commands[i]);
 // 	}
 
 // 	_operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
@@ -218,32 +217,63 @@ void VertiqIo::parameters_update()
 // 	//TODO 多个电机就用id号区分，可以试一下广播是不是可以直接发布给全部电机
 // }
 
-/* add by yongjie zheng*/
+// /* add by yongjie zheng*/
+// void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
+
+// #ifdef CONFIG_VERTIQ_IO_TESTING
+//     bool vertiq_test_active = outputs[0] > 10000 ? true : false;
+//     if (vertiq_test_active) {
+//         vertiq_voltage_superposition_cmd_s cmd{};
+//         // set the vertiq actuator control velocity and convert rpm to rad/s
+//         const float control_velocity_rpm = _param_vertiq_control_velocity.get();
+//         const float amplitude = _param_vertiq_voltage_superposition_amplitude.get();
+//         const float phase = _param_vertiq_voltage_superposition_phase.get();
+
+//         cmd.velocity_setpoint = control_velocity_rpm;  // in rpm
+//         cmd.amplitude = amplitude;
+//         cmd.phase = phase;
+//         cmd.timestamp = hrt_absolute_time();
+//         _test_interface.voltage_superposition_test(cmd);
+
+//         // Set IFCI command to get telemetry uorb(esc_status)
+//         for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+//             _transmission_message.commands[i] = outputs[i];
+//         }
+
+//         _operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
+//         _operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
+//         _serial_interface.ProcessSerialTx();
+//     } else {
+//         // If inactive, apply brake
+//         _test_interface.set_vertiq_brake();
+//     }
+
+// #else
+//     //TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来 注意转速的单位
+//     _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), 300.0f);
+//     _configuration_handler.SetVoltageSuperpositionAmplitude(0.0f);
+//     _configuration_handler.SetVoltageSuperpositionPhase(0.0f);
+//     _serial_interface.ProcessSerialTx();
+// #endif
+// }
+
 void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
 
 #ifdef CONFIG_VERTIQ_IO_TESTING
     bool vertiq_test_active = outputs[0] > 10000 ? true : false;
     if (vertiq_test_active) {
-        //set the vertiq actuator control velocity and convert rpm to rad/s
-        const float control_velocity_rad_s = _param_vertiq_control_velocity.get() * 2.0f * (float)M_PI / 60.0f;
-
-        // Set velocity control
-        _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), control_velocity_rad_s);
-
-        //set voltage superposition
+        const float control_velocity_rpm_max = _param_vertiq_control_velocity.get();
+        const float control_velocity_rpm = static_cast<float>(outputs[0]) / 65535.0f * control_velocity_rpm_max;
         vertiq_voltage_superposition_cmd_s cmd{};
+        // set the vertiq actuator control velocity and convert rpm to rad/s
         const float amplitude = _param_vertiq_voltage_superposition_amplitude.get();
         const float phase = _param_vertiq_voltage_superposition_phase.get();
-        _operational_voltage_superposition.amplitude_.set(*_serial_interface.GetIquartInterface(), cmd.amplitude);
-        _operational_voltage_superposition.phase_.set(*_serial_interface.GetIquartInterface(), cmd.phase);
-        // _configuration_handler.SetVoltageSuperpositionCmd(cmd);
 
-        // Publish cmd message
-        cmd.velocity_setpoint = _param_vertiq_control_velocity.get();  // in rpm
+        cmd.velocity_setpoint = control_velocity_rpm;  // in rpm
         cmd.amplitude = amplitude;
         cmd.phase = phase;
         cmd.timestamp = hrt_absolute_time();
-        _vertiq_voltage_superposition_cmd_pub.publish(cmd);
+        _test_interface.voltage_superposition_test(cmd);
 
         // Set IFCI command to get telemetry uorb(esc_status)
         for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
@@ -254,9 +284,7 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
         _operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
         _serial_interface.ProcessSerialTx();
     } else {
-        // If inactive, apply brake
-        _broadcast_prop_motor_control.ctrl_brake_.set(*_serial_interface.GetIquartInterface());
-        _serial_interface.ProcessSerialTx();
+        _test_interface.set_vertiq_brake();
     }
 
 #else
@@ -267,6 +295,7 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
     _serial_interface.ProcessSerialTx();
 #endif
 }
+
 bool VertiqIo::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs,
 			     unsigned num_control_groups_updated)
 {
@@ -320,16 +349,6 @@ bool VertiqIo::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], 
 	_esc_status_pub.publish(_telem_manager.GetEscStatus());
 #endif
 	return true;
-}
-
-void VertiqIo::publish_ifci_packet(IFCIPackedMessage  *ifci_commands){
-	vertiq_ifci_packet_s vertiq_ifci_packet;
-	for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
-		vertiq_ifci_packet.commands[i] = _transmission_message.commands[i];
-	}
-	vertiq_ifci_packet.num_cvs = _transmission_message.num_cvs;
-	vertiq_ifci_packet.timestamp = hrt_absolute_time();
-	_vertiq_ifci_packet_pub.publish(vertiq_ifci_packet);
 }
 
 void VertiqIo::print_info()

@@ -47,7 +47,6 @@
 #include <uORB/topics/led_control.h>
 #include <uORB/topics/esc_status.h>
 #include <uORB/topics/actuator_test.h>
-#include <uORB/topics/vertiq_ifci_packet.h>
 #include <uORB/topics/vertiq_voltage_superposition_cmd.h>
 
 #include "uORB/Publication.hpp"
@@ -55,6 +54,7 @@
 #include "vertiq_client_manager.hpp"
 #include "vertiq_serial_interface.hpp"
 #include "vertiq_configuration_handler.hpp"
+#include "./swashplatelee_test_function/vertiq_test_interface.hpp"
 
 #include "iq-module-communication-cpp/inc/propeller_motor_control_client.hpp"
 #include "iq-module-communication-cpp/inc/brushless_drive_client.hpp"
@@ -134,6 +134,7 @@ private:
 	VertiqClientManager _client_manager; //We need someone who can manage our clients
 	VertiqTelemetryManager _telem_manager; //We need a telemetry handler
 	VertiqConfigurationHandler _configuration_handler;
+	VertiqTestInterface _test_interface;
 
 ////////////////////////////////////////////////////////////////////////
 //Vertiq client information
@@ -151,7 +152,6 @@ private:
 	PropellerMotorControlClient _broadcast_prop_motor_control;
 	ArmingHandlerClient _broadcast_arming_handler;
 	IQUartFlightControllerInterfaceClient _operational_ifci;
-	VoltageSuperPositionClient _operational_voltage_superposition;
 	IFCIPackedMessage _transmission_message;
 	static const uint16_t MAX_IFCI_MESSAGE = 40; //Up to 16 2 byte commands, one telemetry byte, plus 7 IQUART added bytes
 	uint8_t _output_message[MAX_IFCI_MESSAGE];
@@ -212,7 +212,4 @@ private:
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 	)
 
-	uORB::Publication<vertiq_ifci_packet_s> _vertiq_ifci_packet_pub{ORB_ID(vertiq_ifci_packet)};
-	uORB::Publication<vertiq_voltage_superposition_cmd_s> _vertiq_voltage_superposition_cmd_pub{ORB_ID(vertiq_voltage_superposition_cmd)};
-	void publish_ifci_packet(IFCIPackedMessage *ifci_commands);
 };

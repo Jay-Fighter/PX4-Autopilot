@@ -293,7 +293,7 @@ void LoggedTopics::add_debug_topics()
 	//vertiq testing record uorb topics
 	add_topic("vertiq_ifci_packet", 200);
 	add_topic("vertiq_voltage_superposition_cmd", 200);
-	add_topic("esc_status", 200);
+	add_topic("esc_status", 50);
 }
 
 void LoggedTopics::add_estimator_replay_topics()

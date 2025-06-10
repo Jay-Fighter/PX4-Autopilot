@@ -71,6 +71,8 @@ px4_add_module(
 		vertiq_configuration_handler.cpp
 		vertiq_configuration_handler.hpp
 		entry_wrapper.hpp
+		./swashplatelee_test_function/vertiq_test_interface.hpp
+		./swashplatelee_test_function/vertiq_test_interface.cpp
 	DEPENDS
 		px4_work_queue
 		mixer_module
