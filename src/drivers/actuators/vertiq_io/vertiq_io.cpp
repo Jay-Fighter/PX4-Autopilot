@@ -262,16 +262,14 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
 #ifdef CONFIG_VERTIQ_IO_TESTING
     bool vertiq_test_active = outputs[0] > 10000 ? true : false;
     if (vertiq_test_active) {
-        const float control_velocity_rpm_max = _param_vertiq_control_velocity.get();
-        const float control_velocity_rpm = static_cast<float>(outputs[0]) / 65535.0f * control_velocity_rpm_max;
-        vertiq_voltage_superposition_cmd_s cmd{};
-        // set the vertiq actuator control velocity and convert rpm to rad/s
-        const float amplitude = _param_vertiq_voltage_superposition_amplitude.get();
-        const float phase = _param_vertiq_voltage_superposition_phase.get();
+	const float ua_rpm = _param_swashplateless_ua.get();
+	const float us_rpm = _param_swashplateless_us.get();
+        const float phi = _param_swashplateless_phi.get();
 
-        cmd.velocity_setpoint = control_velocity_rpm;  // in rpm
-        cmd.amplitude = amplitude;
-        cmd.phase = phase;
+        vertiq_voltage_superposition_cmd_s cmd{};
+        cmd.velocity_setpoint = ua_rpm;  // in rpm
+        cmd.amplitude = us_rpm;
+        cmd.phase = phi;
         cmd.timestamp = hrt_absolute_time();
         _test_interface.voltage_superposition_test(cmd);
 
@@ -285,6 +283,7 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
         _serial_interface.ProcessSerialTx();
     } else {
         _test_interface.set_vertiq_brake();
+	_test_interface._is_new_cmd =false;
     }
 
 #else

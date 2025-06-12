@@ -287,31 +287,51 @@ parameters:
                 30: Module ID 62
             reboot_required: true
             default: 0
-        VTQ_VSP_AMP_JAY:
+        VTQ_SP_U_A:
             description:
-                short: Module Param - Amplitude during voltage superposition control
+                short: Module Param - Average velocity for swashplatess mechanism
                 long: |
-                    Relevant only in voltage superposition client. This is the amplitude of the pulse voltage
+                    DC component u_a, i.e. baseline setpoint velocity (unit: RPM)
             type: float
             default: 0
             min: 0.0
-            max: 5.0
-        VTQ_VSP_PHA_JAY:
+            max: 10000.0
+        VTQ_SP_U_S:
             description:
-                short: Module Param - Phase during voltage superposition control
+                short: Module Param - Sinusoidal velocity amplitude
                 long: |
-                    Relevant only in voltage superposition client. This is the amplitude of the pulse voltage
+                    Amplitude u_s of the sinusoidal modulation added to the baseline velocity (unit: RPM)
             type: float
-            default: 0
+            default: 0.0
+            min: 0.0
+            max: 500.0
+        VTQ_SP_PHASE:
+            description:
+                short: Module Param - Sinusoidal phase offset
+                long: |
+                      Phase shift \alpha for the sinusoidal term sin(φ – \alpha) (unit: rad)
+            type: float
+            default: 0.0
             min: -6.283
             max: 6.283
-        VTQ_VSP_VELO_JAY:
+        VTQ_SP_VEL_P:
             description:
-                short: Module Param - Velocity during voltage superposition control(rpm)
-                long: |
-                    Relevant only in voltage superposition client. This is the velocity that you want to set for the module.
+                short: Module Param - Proportional gain for velocity error
             type: float
-            default: 0
+            default: 0.0
             min: 0.0
-            max: 10000
-
+            max: 2.0
+        VTQ_SP_VEL_I:
+            description:
+                short: Module Param - Integral gain for velocity error
+            type: float
+            default: 0.04998779296875
+            min: 0.0
+            max: 2.0
+        VTQ_SP_VEL_D:
+            description:
+                short: Module Param - Derivative gain for velocity error
+            type: float
+            default: 0.0001983642578125
+            min: 0.0
+            max: 2.0

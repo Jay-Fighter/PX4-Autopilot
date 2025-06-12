@@ -21,15 +21,19 @@
  */
 
 #pragma once
+#include <math.h>
+
+#include <px4_platform_common/module_params.h>
 #include <uORB/topics/vertiq_voltage_superposition_cmd.h>
 #include <uORB/Publication.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 
 #include "drivers/actuators/vertiq_io/vertiq_client_manager.hpp"
 #include "../vertiq_client_manager.hpp"
 #include "../vertiq_serial_interface.hpp"
 #include "../iq-module-communication-cpp/inc/voltage_superposition_client.hpp"
 
-class VertiqTestInterface {
+class VertiqTestInterface : public ModuleParams {
    public:
     VertiqTestInterface(VertiqSerialInterface* serial_interface, VertiqClientManager* client_manager);
     ~VertiqTestInterface();
@@ -42,6 +46,11 @@ class VertiqTestInterface {
     void run();
 
     /**
+     * @brief check if parameters have changed
+     */
+    void parameters_update();
+
+    /**
      * @brief   Voltage superposition test
      */
     void voltage_superposition_test(const vertiq_voltage_superposition_cmd_s& cmd);
@@ -52,7 +61,14 @@ class VertiqTestInterface {
      */
     void StartPublishing(uORB::Publication<vertiq_voltage_superposition_cmd_s>* voltage_superposition_cmd_pub);
 
+    void SetVelocityKp();
+    void SetVelocityKi();
+    void SetVelocityKd();
+
+    bool _is_new_cmd;
+
    private:
+    uint64_t last_swashplateless_cmd_update{0};
     VertiqSerialInterface* _serial_interface;
     VertiqClientManager* _client_manager;
 
@@ -60,9 +76,17 @@ class VertiqTestInterface {
     VoltageSuperPositionClient _op_voltage_superposition;
     PropellerMotorControlClient _op_broadcast_prop_motor_control;
 
+    // uORB subscriptions
+    uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
     // uORB publications
     uORB::Publication<vertiq_voltage_superposition_cmd_s> _voltage_superposition_cmd_pub{ORB_ID(vertiq_voltage_superposition_cmd)};
 
     // cmd
     vertiq_voltage_superposition_cmd_s _vertiq_voltage_superposition_cmd{};
+
+    DEFINE_PARAMETERS((ParamFloat<px4::params::VTQ_SP_VEL_P>)_param_vertiq_vel_kp, (ParamFloat<px4::params::VTQ_SP_VEL_I>)_param_vertiq_vel_ki,
+                      (ParamFloat<px4::params::VTQ_SP_VEL_D>)_param_vertiq_vel_kd
+
+    )
 };

@@ -206,9 +206,9 @@ private:
 		, (ParamFloat<px4::params::VTQ_VELO_CUTOFF>) _param_vertiq_pulse_velo_cutoff
 		, (ParamFloat<px4::params::VTQ_TQUE_OFF_ANG>) _param_vertiq_pulse_torque_offset_angle
 		, (ParamFloat<px4::params::VTQ_PULSE_V_LIM>) _param_vertiq_pulse_voltage_limit
-		, (ParamFloat<px4::params::VTQ_VSP_AMP_JAY>) _param_vertiq_voltage_superposition_amplitude
-		, (ParamFloat<px4::params::VTQ_VSP_PHA_JAY>) _param_vertiq_voltage_superposition_phase
-		, (ParamFloat<px4::params::VTQ_VSP_VELO_JAY>) _param_vertiq_control_velocity
+		, (ParamFloat<px4::params::VTQ_SP_U_A>) _param_swashplateless_ua
+		, (ParamFloat<px4::params::VTQ_SP_U_S>) _param_swashplateless_us
+		, (ParamFloat<px4::params::VTQ_SP_PHASE>) _param_swashplateless_phi
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 	)
 
