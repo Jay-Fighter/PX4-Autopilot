@@ -34,6 +34,7 @@
 
 #include <drivers/device/device.h>
 #include <lib/led/led.h>
+#include <cstdint>
 #include <lib/mixer_module/mixer_module.hpp>
 #include <lib/perf/perf_counter.h>
 

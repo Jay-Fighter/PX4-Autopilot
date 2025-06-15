@@ -22,6 +22,7 @@
 #include "vertiq_test_interface.hpp"
 #include <unistd.h>
 #include "commander/HealthAndArmingChecks/Common.hpp"
+#include "drivers/drv_hrt.h"
 #include "px4_platform_common/log.h"
 
 VertiqTestInterface::VertiqTestInterface(VertiqSerialInterface* serial_interface, VertiqClientManager* client_manager)
@@ -33,6 +34,9 @@ VertiqTestInterface::VertiqTestInterface(VertiqSerialInterface* serial_interface
       _op_broadcast_prop_motor_control(_kBroadcastID) {
     client_manager->AddNewClient(&_op_voltage_superposition);
     client_manager->AddNewClient(&_op_broadcast_prop_motor_control);
+
+    // get modulation mode
+    GetModulationMode();
 }
 
 VertiqTestInterface::~VertiqTestInterface() {}
@@ -60,30 +64,40 @@ void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superp
     _vertiq_voltage_superposition_cmd = cmd;
 
     // set velocity setpoint
-    const float ua_rpm = _vertiq_voltage_superposition_cmd.velocity_setpoint;
-    const float us_rpm = _vertiq_voltage_superposition_cmd.amplitude;
-    const float phase = _vertiq_voltage_superposition_cmd.phase;
+    const double ua_rpm = _vertiq_voltage_superposition_cmd.velocity_setpoint;
+    const double us_rpm = _vertiq_voltage_superposition_cmd.amplitude;
+    const double phase = _vertiq_voltage_superposition_cmd.phase;
+    const int32_t f = _param_vertiq_f.get();
 
     // calculate the sinusoidal angular frequency
-    const float omega = 2.0f * static_cast<float>(M_PI) * _vertiq_voltage_superposition_cmd.velocity_setpoint / 60.0f;
+    //     const float omega = 2.0f * static_cast<float>(M_PI) * _vertiq_voltage_superposition_cmd.velocity_setpoint / 60.0f;
 
     // calculate the total velocity
     if (!_is_new_cmd) {
         last_swashplateless_cmd_update = hrt_absolute_time();
+        t_s = hrt_absolute_time() * 1.0e-6;
         _is_new_cmd = true;
     }
-    float t_s = (float)(hrt_absolute_time() - last_swashplateless_cmd_update) * 1.0e-6f;
-    float u = 0.0f;
-    if (t_s < 1.0f) {
-        u = ua_rpm * t_s * 2.0f * static_cast<float>(M_PI) / 60.0f;
+
+    t_s = (hrt_absolute_time() - last_swashplateless_cmd_update) * 1.0e-6;
+    PX4_INFO("t_s: %f", (double)t_s);
+    double u = 0.0;
+    // for smooth start we make the ramp up slower
+    if (t_s < 1.0) {
+        u = ua_rpm * t_s * 2.0 * (M_PI) / 60.0;
     } else {
-        u = (ua_rpm + us_rpm * (float)cos(omega * t_s - phase)) * 2.0f * static_cast<float>(M_PI) / 60.0f;
+        // once the velocity is above the setpoint, we ramp up to the modulated speed setpoint
+        u = (ua_rpm + us_rpm * cos(2.0 * static_cast<double>(M_PI) * f * t_s - phase)) * 2.0 * (M_PI) / 60.0;
+        // PX4_INFO("u: %f", (double)u);
     }
 
     // publish the velocity cmd
-    _vertiq_voltage_superposition_cmd.velocity_setpoint = u * 60.0f / (2 * static_cast<float>(M_PI));
+    _vertiq_voltage_superposition_cmd.velocity_setpoint = u * 60.0 / (2 * (M_PI));
     _vertiq_voltage_superposition_cmd.amplitude = _vertiq_voltage_superposition_cmd.amplitude;
     _vertiq_voltage_superposition_cmd.phase = _vertiq_voltage_superposition_cmd.phase;
+    _vertiq_voltage_superposition_cmd.frequency = f;
+    _vertiq_voltage_superposition_cmd.timestamp = hrt_absolute_time();
+
     StartPublishing(&_voltage_superposition_cmd_pub);
 
     // send the velocity to the vertiq
@@ -105,18 +119,37 @@ void VertiqTestInterface::SetVelocityKp() {
     float kp = _param_vertiq_vel_kp.get();
     _op_broadcast_prop_motor_control.velocity_kp_.set(*_serial_interface->GetIquartInterface(), kp);
     //     _op_broadcast_prop_motor_control.velocity_kp_.save(*_serial_interface->GetIquartInterface());
-    PX4_INFO("kp%.7f", (double)kp);
+    //     PX4_INFO("kp%.7f", (double)kp);
 }
 
 void VertiqTestInterface::SetVelocityKi() {
     float ki = _param_vertiq_vel_ki.get();
     _op_broadcast_prop_motor_control.velocity_ki_.set(*_serial_interface->GetIquartInterface(), ki);
     //     _op_broadcast_prop_motor_control.velocity_ki_.save(*_serial_interface->GetIquartInterface());
-    PX4_INFO("ki%.7f", (double)ki);
+    //     PX4_INFO("ki%.7f", (double)ki);
 }
 void VertiqTestInterface::SetVelocityKd() {
     float kd = _param_vertiq_vel_kd.get();
     _op_broadcast_prop_motor_control.velocity_kd_.set(*_serial_interface->GetIquartInterface(), kd);
     //     _op_broadcast_prop_motor_control.velocity_kd_.save(*_serial_interface->GetIquartInterface());
-    PX4_INFO("kd%.7f", (double)kd);
+    //     PX4_INFO("kd%.7f", (double)kd);
+}
+
+void VertiqTestInterface::SetVelocityFF0() {
+    float ff0 = _param_vertiq_vel_ff0.get();
+    _op_broadcast_prop_motor_control.velocity_ff0_.set(*_serial_interface->GetIquartInterface(), ff0);
+}
+
+void VertiqTestInterface::SetVelocityFF1() {
+    float ff1 = _param_vertiq_vel_ff1.get();
+    _op_broadcast_prop_motor_control.velocity_ff1_.set(*_serial_interface->GetIquartInterface(), ff1);
+}
+
+void VertiqTestInterface::SetVelocityFF2() {
+    float ff2 = _param_vertiq_vel_ff2.get();
+    _op_broadcast_prop_motor_control.velocity_ff2_.set(*_serial_interface->GetIquartInterface(), ff2);
+}
+
+void VertiqTestInterface::GetModulationMode() {
+    _modulation_mode = _param_vertiq_modulation_mode.get();
 }

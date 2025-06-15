@@ -35,6 +35,8 @@
 #include <px4_platform_common/log.h>
 #include <unistd.h>
 #include <cstdint>
+#include "commander/HealthAndArmingChecks/Common.hpp"
+#include "drivers/drv_hrt.h"
 
 px4::atomic_bool VertiqIo::_request_telemetry_init{false};
 
@@ -107,6 +109,7 @@ bool VertiqIo::init()
 void VertiqIo::start()
 {
 	ScheduleNow();
+	// ScheduleOnInterval(1000_us);
 }
 
 void VertiqIo::stop()
@@ -262,8 +265,8 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
 #ifdef CONFIG_VERTIQ_IO_TESTING
     bool vertiq_test_active = outputs[0] > 10000 ? true : false;
     if (vertiq_test_active) {
-	const float ua_rpm = _param_swashplateless_ua.get();
-	const float us_rpm = _param_swashplateless_us.get();
+        const float ua_rpm = _param_swashplateless_ua.get();
+        const float us_rpm = _param_swashplateless_us.get();
         const float phi = _param_swashplateless_phi.get();
 
         vertiq_voltage_superposition_cmd_s cmd{};
@@ -283,7 +286,7 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
         _serial_interface.ProcessSerialTx();
     } else {
         _test_interface.set_vertiq_brake();
-	_test_interface._is_new_cmd =false;
+        // _test_interface._is_new_cmd =false;
     }
 
 #else

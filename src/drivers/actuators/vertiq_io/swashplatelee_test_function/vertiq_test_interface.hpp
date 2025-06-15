@@ -25,6 +25,7 @@
 
 #include <px4_platform_common/module_params.h>
 #include <uORB/topics/vertiq_voltage_superposition_cmd.h>
+#include <cstdint>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 
@@ -64,11 +65,18 @@ class VertiqTestInterface : public ModuleParams {
     void SetVelocityKp();
     void SetVelocityKi();
     void SetVelocityKd();
+    void SetVelocityFF0();
+    void SetVelocityFF1();
+    void SetVelocityFF2();
+    void GetModulationMode();
 
     bool _is_new_cmd;
 
    private:
     uint64_t last_swashplateless_cmd_update{0};
+    double t_s;
+    uint32_t _modulation_mode{0};
+    float _time_step{0.01f};
     VertiqSerialInterface* _serial_interface;
     VertiqClientManager* _client_manager;
 
@@ -86,7 +94,9 @@ class VertiqTestInterface : public ModuleParams {
     vertiq_voltage_superposition_cmd_s _vertiq_voltage_superposition_cmd{};
 
     DEFINE_PARAMETERS((ParamFloat<px4::params::VTQ_SP_VEL_P>)_param_vertiq_vel_kp, (ParamFloat<px4::params::VTQ_SP_VEL_I>)_param_vertiq_vel_ki,
-                      (ParamFloat<px4::params::VTQ_SP_VEL_D>)_param_vertiq_vel_kd
+                      (ParamFloat<px4::params::VTQ_SP_VEL_D>)_param_vertiq_vel_kd, (ParamFloat<px4::params::VTQ_SP_VEL_FF0>)_param_vertiq_vel_ff0,
+                      (ParamFloat<px4::params::VTQ_SP_VEL_FF1>)_param_vertiq_vel_ff1, (ParamFloat<px4::params::VTQ_SP_VEL_FF2>)_param_vertiq_vel_ff2,
+                      (ParamInt<px4::params::VTQ_SP_1_OMEGA>)_param_vertiq_f, (ParamInt<px4::params::VTQ_SP_MOD_MODE>)_param_vertiq_modulation_mode
 
     )
 };

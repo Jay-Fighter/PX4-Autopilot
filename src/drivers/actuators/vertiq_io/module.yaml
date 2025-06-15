@@ -287,12 +287,22 @@ parameters:
                 30: Module ID 62
             reboot_required: true
             default: 0
+        VTQ_SP_MOD_MODE:
+            description:
+                short: Module Param - Vertiq swashplatess modulation mode (0:velocity modulation, 1:voltage modulation)
+            type: int32
+            reboot_required: true
+            default: 0
+            min: 0
+            max: 1
+
         VTQ_SP_U_A:
             description:
                 short: Module Param - Average velocity for swashplatess mechanism
                 long: |
                     DC component u_a, i.e. baseline setpoint velocity (unit: RPM)
             type: float
+            enable_if: VTQ_SP_MOD_MODE == 0
             default: 0
             min: 0.0
             max: 10000.0
@@ -314,18 +324,27 @@ parameters:
             default: 0.0
             min: -6.283
             max: 6.283
+        VTQ_SP_1_OMEGA:
+            description:
+                short: Module Param - Sinusoidal phase offset
+                long: |
+                      Phase shift \alpha for the sinusoidal term sin(φ – \alpha) (unit: rad)
+            type: int32
+            default: 1
+            min: 1
+            max: 100
         VTQ_SP_VEL_P:
             description:
                 short: Module Param - Proportional gain for velocity error
             type: float
-            default: 0.0
+            default: 0.02
             min: 0.0
             max: 2.0
         VTQ_SP_VEL_I:
             description:
                 short: Module Param - Integral gain for velocity error
             type: float
-            default: 0.04998779296875
+            default: 0.2
             min: 0.0
             max: 2.0
         VTQ_SP_VEL_D:
@@ -335,3 +354,24 @@ parameters:
             default: 0.0001983642578125
             min: 0.0
             max: 2.0
+        VTQ_SP_VEL_FF0:
+            description:
+                short: Module Param - Zero-order (constant) feed-forward term for velocity control
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 0.1
+        VTQ_SP_VEL_FF1:
+            description:
+                short: Module Param - First-order (linear) feed-forward gain for friction and back-EMF compensation
+            type: float
+            default: 0.00439453125
+            min: 0.0
+            max: 1.0
+        VTQ_SP_VEL_FF2:
+            description:
+                short: Module Param - Second-order (quadratic) feed-forward gain for aerodynamic or drag compensation
+            type: float
+            default: 0.000004089
+            min: 0.0
+            max: 1.0
