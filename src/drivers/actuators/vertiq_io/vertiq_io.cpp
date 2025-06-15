@@ -265,21 +265,47 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
 #ifdef CONFIG_VERTIQ_IO_TESTING
     bool vertiq_test_active = outputs[0] > 10000 ? true : false;
     if (vertiq_test_active) {
-        const float ua_rpm = _param_swashplateless_ua.get();
-        const float us_rpm = _param_swashplateless_us.get();
-        const float phi = _param_swashplateless_phi.get();
-
-        vertiq_voltage_superposition_cmd_s cmd{};
-        cmd.velocity_setpoint = ua_rpm;  // in rpm
-        cmd.amplitude = us_rpm;
-        cmd.phase = phi;
-        cmd.timestamp = hrt_absolute_time();
-        _test_interface.voltage_superposition_test(cmd);
-
-        // Set IFCI command to get telemetry uorb(esc_status)
-        for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
-            _transmission_message.commands[i] = outputs[i];
+        switch (_test_interface.GetModulationMode()) {
+            case px4::msg::VertiqModulationMode::VELOCITY_MODULATION: {
+                vertiq_voltage_superposition_cmd_s cmd{};
+                cmd.ua = _param_swashplateless_ua.get();  // in rpm
+                cmd.us = _param_swashplateless_us.get();
+                cmd.phase = _param_swashplateless_phi.get();
+                cmd.timestamp = hrt_absolute_time();
+                _test_interface.voltage_superposition_test(cmd);
+                break;
+            }
+            case px4::msg::VertiqModulationMode::VOLTAGE_MODULATION: {
+                vertiq_voltage_superposition_cmd_s cmd{};
+                cmd.ua = _param_swashplateless_ua_v.get();  // in rpm
+                cmd.us = _param_swashplateless_us_v.get();
+                cmd.phase = _param_swashplateless_phi.get();
+                cmd.timestamp = hrt_absolute_time();
+                _test_interface.voltage_superposition_test(cmd);
+                break;
+            }
         }
+
+        // if (_test_interface.GetModulationMode() == px4::msg::VertiqModulationMode::VELOCITY_MODULATION) {
+        //     vertiq_voltage_superposition_cmd_s cmd{};
+        //     cmd.ua = _param_swashplateless_ua.get();  // in rpm
+        //     cmd.us = _param_swashplateless_us.get();
+        //     cmd.phase = _param_swashplateless_phi.get();
+        //     cmd.timestamp = hrt_absolute_time();
+        //     _test_interface.voltage_superposition_test(cmd);
+
+        //     // Set IFCI command to get telemetry uorb(esc_status)
+        //     for (uint8_t i = 0; i < _transmission_message.num_cvs; i++) {
+        //         _transmission_message.commands[i] = outputs[i];
+        //     }
+        // } else {
+        //     vertiq_voltage_superposition_cmd_s cmd{};
+        //     cmd.ua = _param_swashplateless_ua_v.get();  // in V
+        //     cmd.us = _param_swashplateless_us_v.get();
+        //     cmd.phase = _param_swashplateless_phi.get();
+        //     cmd.timestamp = hrt_absolute_time();
+        //     _test_interface.voltage_superposition_test(cmd);
+        // }
 
         _operational_ifci.PackageIfciCommandsForTransmission(&_transmission_message, _output_message, &_output_len);
         _operational_ifci.packed_command_.set(*_serial_interface.GetIquartInterface(), _output_message, _output_len);
@@ -290,7 +316,7 @@ void VertiqIo::OutputControls(uint16_t outputs[MAX_ACTUATORS]) {
     }
 
 #else
-    //TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来 注意转速的单位
+    // TODO 非测试模式下这里的速度和幅值相位需要根据公式计算出来 注意转速的单位
     _broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface.GetIquartInterface(), 300.0f);
     _configuration_handler.SetVoltageSuperpositionAmplitude(0.0f);
     _configuration_handler.SetVoltageSuperpositionPhase(0.0f);

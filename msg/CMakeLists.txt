@@ -265,6 +265,7 @@ set(msg_files
 	versioned/VtolVehicleStatus.msg
 	vertiq_io/VertiqIfciPacket.msg
 	vertiq_io/VertiqVoltageSuperpositionCmd.msg
+	vertiq_io/VertiqModulationMode.msg
 )
 list(SORT msg_files)
 

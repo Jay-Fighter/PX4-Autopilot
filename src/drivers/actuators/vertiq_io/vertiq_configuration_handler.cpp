@@ -62,7 +62,7 @@ void VertiqConfigurationHandler::InitConfigurationClients(uint8_t object_id)
 
 #ifdef CONFIG_USE_PULSING_CONFIGURATION
 bool VertiqConfigurationHandler::SetVoltageSuperpositionCmd(const vertiq_voltage_superposition_cmd_s& cmd) {
-    _voltage_superposition_client->amplitude_.set(*_serial_interface->GetIquartInterface(), cmd.amplitude);
+    _voltage_superposition_client->amplitude_.set(*_serial_interface->GetIquartInterface(), cmd.us);
     _voltage_superposition_client->phase_.set(*_serial_interface->GetIquartInterface(), cmd.phase);
     _serial_interface->ProcessSerialTx();
     return true;

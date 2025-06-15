@@ -287,6 +287,9 @@ parameters:
                 30: Module ID 62
             reboot_required: true
             default: 0
+
+    - group: Vertiq IO Test
+      definitions:
         VTQ_SP_MOD_MODE:
             description:
                 short: Module Param - Vertiq swashplatess modulation mode (0:velocity modulation, 1:voltage modulation)
@@ -295,14 +298,12 @@ parameters:
             default: 0
             min: 0
             max: 1
-
         VTQ_SP_U_A:
             description:
                 short: Module Param - Average velocity for swashplatess mechanism
                 long: |
                     DC component u_a, i.e. baseline setpoint velocity (unit: RPM)
             type: float
-            enable_if: VTQ_SP_MOD_MODE == 0
             default: 0
             min: 0.0
             max: 10000.0
@@ -375,3 +376,21 @@ parameters:
             default: 0.000004089
             min: 0.0
             max: 1.0
+        VTQ_SP_U_A_VOL:
+            description:
+                short: Module Param - Average voltage for swashplatess mechanism
+                long: |
+                    DC component u_a, i.e. baseline setpoint voltage (unit: V)
+            type: float
+            default: 1.0
+            min: 0.0
+            max: 10.0
+        VTQ_SP_U_S_VOL:
+            description:
+                short: Module Param - Sinusoidal voltage amplitude
+                long: |
+                    Amplitude u_s of the sinusoidal modulation added to the baseline voltage (unit: V)
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 5.0

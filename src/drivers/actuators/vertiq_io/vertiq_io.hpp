@@ -49,6 +49,7 @@
 #include <uORB/topics/esc_status.h>
 #include <uORB/topics/actuator_test.h>
 #include <uORB/topics/vertiq_voltage_superposition_cmd.h>
+#include <uORB/topics/vertiq_modulation_mode.h>
 
 #include "uORB/Publication.hpp"
 #include "vertiq_telemetry_manager.hpp"
@@ -210,6 +211,8 @@ private:
 		, (ParamFloat<px4::params::VTQ_SP_U_A>) _param_swashplateless_ua
 		, (ParamFloat<px4::params::VTQ_SP_U_S>) _param_swashplateless_us
 		, (ParamFloat<px4::params::VTQ_SP_PHASE>) _param_swashplateless_phi
+		, (ParamFloat<px4::params::VTQ_SP_U_A_VOL>) _param_swashplateless_ua_v
+		, (ParamFloat<px4::params::VTQ_SP_U_S_VOL>) _param_swashplateless_us_v
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 	)
 
