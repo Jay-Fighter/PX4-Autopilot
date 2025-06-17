@@ -32,9 +32,11 @@ VertiqTestInterface::VertiqTestInterface(VertiqSerialInterface* serial_interface
       _serial_interface(serial_interface),
       _client_manager(client_manager),
       _op_voltage_superposition(_kBroadcastID),
-      _op_broadcast_prop_motor_control(_kBroadcastID) {
+      _op_broadcast_prop_motor_control(_kBroadcastID),
+      _op_brushless_drive(0) {
     client_manager->AddNewClient(&_op_voltage_superposition);
     client_manager->AddNewClient(&_op_broadcast_prop_motor_control);
+    client_manager->AddNewClient(&_op_brushless_drive);
 
     _modulation_mode.mode = px4::msg::VertiqModulationMode::VELOCITY_MODULATION;
     // get modulation mode
@@ -60,7 +62,25 @@ void VertiqTestInterface::parameters_update() {
     }
 }
 
+// void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superposition_cmd_s& cmd) {
+//     _vertiq_swashplateless_cmd = cmd;
+
+//     // set velocity setpoint
+//     const float ctrl_vel_sp_rad_s = _vertiq_swashplateless_cmd.ua * 2.0f * (float)M_PI / 60.0f;  // convert to rad/s
+//     _op_broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface->GetIquartInterface(), ctrl_vel_sp_rad_s);
+
+//     //  set amplitude and phase
+//     _op_voltage_superposition.amplitude_.set(*_serial_interface->GetIquartInterface(), _vertiq_swashplateless_cmd.us);
+//     _op_voltage_superposition.phase_.set(*_serial_interface->GetIquartInterface(), _vertiq_swashplateless_cmd.phase);
+
+// //     _serial_interface->ProcessSerialTx();
+//     PX4_INFO("control_velocity_rpm: %f", (double)ctrl_vel_sp_rad_s);
+//     StartPublishing(&_voltage_superposition_cmd_pub);
+//     _serial_interface.ProcessSerialTx();
+// }
+
 void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superposition_cmd_s& cmd) {
+    UpdateEscState();
     parameters_update();
 
     _vertiq_swashplateless_cmd = cmd;
@@ -79,14 +99,14 @@ void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superp
         }
 
         t_s = (hrt_absolute_time() - last_swashplateless_cmd_update) * 1.0e-6;
-        PX4_INFO("t_s: %f", (double)t_s);
+        // PX4_INFO("t_s: %f", (double)t_s);
         double u = 0.0;
         // for smooth start we make the ramp up slower
         if (t_s < 1.0) {
             u = ua_rpm * t_s * 2.0 * (M_PI) / 60.0;
         } else {
             // once the velocity is above the setpoint, we ramp up to the modulated speed setpoint
-            u = (ua_rpm + us_rpm * cos(2.0 * (M_PI) * f * t_s - phase)) * 2.0 * (M_PI) / 60.0;
+            u = (ua_rpm + us_rpm * cos(_esc_obs_angle - phase)) * 2.0 * (M_PI) / 60.0;
             // PX4_INFO("u: %f", (double)u);
         }
 
@@ -100,6 +120,8 @@ void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superp
 
         // send the velocity to the vertiq
         _op_broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface->GetIquartInterface(), u);
+        _serial_interface->ProcessSerialTx();
+
     } else if (_modulation_mode.mode == px4::msg::VertiqModulationMode::VOLTAGE_MODULATION) {
         if (!_is_new_cmd) {
             last_swashplateless_cmd_update = hrt_absolute_time();
@@ -113,17 +135,22 @@ void VertiqTestInterface::voltage_superposition_test(const vertiq_voltage_superp
             _op_broadcast_prop_motor_control.ctrl_volts_.set(*_serial_interface->GetIquartInterface(), cmd.ua);
         } else {
             _op_broadcast_prop_motor_control.ctrl_volts_.set(*_serial_interface->GetIquartInterface(), cmd.ua);
-            _op_voltage_superposition.voltage_.set(*_serial_interface->GetIquartInterface(), cmd.us);
+            //     _op_broadcast_prop_motor_control.ctrl_velocity_.set(*_serial_interface->GetIquartInterface(), cmd.ua * 100.0f);
+
+            _op_voltage_superposition.amplitude_.set(*_serial_interface->GetIquartInterface(), cmd.us);
             _op_voltage_superposition.phase_.set(*_serial_interface->GetIquartInterface(), cmd.phase);
         }
     }
 
-    StartPublishing(&_voltage_superposition_cmd_pub);
-    _client_manager->HandleClientCommunication();
+    _voltage_superposition_cmd_pub.publish(_vertiq_swashplateless_cmd);
+
+    //     StartPublishing(&_voltage_superposition_cmd_pub);
+    //     _client_manager->HandleClientCommunication();
 }
 
 void VertiqTestInterface::StartPublishing(uORB::Publication<vertiq_voltage_superposition_cmd_s>* voltage_superposition_cmd_pub) {
     _vertiq_swashplateless_cmd.timestamp = hrt_absolute_time();
+    //     voltage_superposition_cmd_pub->advertise();
     voltage_superposition_cmd_pub->publish(_vertiq_swashplateless_cmd);
 }
 
@@ -176,4 +203,12 @@ void VertiqTestInterface::SetModulationMode() {
 
 uint8_t VertiqTestInterface::GetModulationMode() {
     return _modulation_mode.mode;
+}
+
+void VertiqTestInterface::UpdateEscState() {
+    _op_brushless_drive.obs_angle_.get(*_serial_interface->GetIquartInterface());
+    _client_manager->HandleClientCommunication();
+    if (_op_brushless_drive.obs_angle_.IsFresh()) {
+        _esc_obs_angle = _op_brushless_drive.obs_angle_.get_reply();
+    }
 }

@@ -215,5 +215,5 @@ private:
 		, (ParamFloat<px4::params::VTQ_SP_U_S_VOL>) _param_swashplateless_us_v
 #endif //CONFIG_USE_PULSING_CONFIGURATION
 	)
-
+    uORB::Publication<vertiq_voltage_superposition_cmd_s> _voltage_superposition_cmd_pub{ORB_ID(vertiq_voltage_superposition_cmd)};
 };

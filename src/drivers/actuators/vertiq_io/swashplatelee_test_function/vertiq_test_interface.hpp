@@ -34,6 +34,7 @@
 #include "../vertiq_client_manager.hpp"
 #include "../vertiq_serial_interface.hpp"
 #include "../iq-module-communication-cpp/inc/voltage_superposition_client.hpp"
+#include "../iq-module-communication-cpp/inc/brushless_drive_client.hpp"
 
 class VertiqTestInterface : public ModuleParams {
    public:
@@ -71,21 +72,24 @@ class VertiqTestInterface : public ModuleParams {
     void SetVelocityFF2();
     void SetModulationMode();
     uint8_t GetModulationMode();
-
+    void UpdateEscState();
 
     bool _is_new_cmd;
+    // cmd
+    vertiq_voltage_superposition_cmd_s _vertiq_swashplateless_cmd{};
 
    private:
     uint64_t last_swashplateless_cmd_update{0};
     double t_s;
     vertiq_modulation_mode_s _modulation_mode;
-    float _time_step{0.01f};
+    double _esc_obs_angle{0.0f};
     VertiqSerialInterface* _serial_interface;
     VertiqClientManager* _client_manager;
 
     // vertiq clients
     VoltageSuperPositionClient _op_voltage_superposition;
     PropellerMotorControlClient _op_broadcast_prop_motor_control;
+    BrushlessDriveClient _op_brushless_drive;
 
     // uORB subscriptions
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
@@ -93,8 +97,8 @@ class VertiqTestInterface : public ModuleParams {
     // uORB publications
     uORB::Publication<vertiq_voltage_superposition_cmd_s> _voltage_superposition_cmd_pub{ORB_ID(vertiq_voltage_superposition_cmd)};
 
-    // cmd
-    vertiq_voltage_superposition_cmd_s _vertiq_swashplateless_cmd{};
+    //     // cmd
+    //     vertiq_voltage_superposition_cmd_s _vertiq_swashplateless_cmd{};
 
     DEFINE_PARAMETERS((ParamFloat<px4::params::VTQ_SP_VEL_P>)_param_vertiq_vel_kp, (ParamFloat<px4::params::VTQ_SP_VEL_I>)_param_vertiq_vel_ki,
                       (ParamFloat<px4::params::VTQ_SP_VEL_D>)_param_vertiq_vel_kd, (ParamFloat<px4::params::VTQ_SP_VEL_FF0>)_param_vertiq_vel_ff0,

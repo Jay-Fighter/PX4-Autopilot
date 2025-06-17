@@ -128,6 +128,8 @@ void VertiqIo::Run()
 
 	//Handle IQUART reception and transmission
 	_client_manager.HandleClientCommunication();
+	
+	_voltage_superposition_cmd_pub.publish(_test_interface._vertiq_swashplateless_cmd);
 
 	// If we're supposed to ask for telemetry from someone
 	if (_telem_bitmask) {
