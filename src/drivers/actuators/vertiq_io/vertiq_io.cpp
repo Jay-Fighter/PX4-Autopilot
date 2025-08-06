@@ -125,10 +125,10 @@ void VertiqIo::Run()
 	//Increment our loop counter
 	perf_begin(_loop_perf);
 	perf_count(_loop_interval_perf);
-
+	_test_interface.UpdateEscState();
 	//Handle IQUART reception and transmission
 	_client_manager.HandleClientCommunication();
-	
+
 	_voltage_superposition_cmd_pub.publish(_test_interface._vertiq_swashplateless_cmd);
 
 	// If we're supposed to ask for telemetry from someone

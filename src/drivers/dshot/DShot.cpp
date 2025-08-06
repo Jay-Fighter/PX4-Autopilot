@@ -36,6 +36,7 @@
 #include <px4_arch/io_timer.h>
 
 #include <px4_platform_common/sem.hpp>
+#include "perf/perf_counter.h"
 
 char DShot::_telemetry_device[] {};
 px4::atomic_bool DShot::_request_telemetry_init{false};
@@ -57,6 +58,7 @@ DShot::~DShot()
 	up_dshot_arm(false);
 
 	perf_free(_cycle_perf);
+	perf_free(_loop_interval_perf);
 	delete _telemetry;
 }
 
@@ -528,6 +530,7 @@ void DShot::Run()
 	}
 
 	perf_begin(_cycle_perf);
+	perf_count(_loop_interval_perf);
 
 	_mixing_output.update();
 
@@ -798,6 +801,7 @@ int DShot::print_status()
 	PX4_INFO("Outputs used: 0x%" PRIx32, _output_mask);
 	PX4_INFO("Outputs on: %s", _outputs_on ? "yes" : "no");
 	perf_print_counter(_cycle_perf);
+	perf_print_counter(_loop_interval_perf);
 	_mixing_output.printStatus();
 
 	if (_telemetry) {

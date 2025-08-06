@@ -208,7 +208,8 @@ uint8_t VertiqTestInterface::GetModulationMode() {
 void VertiqTestInterface::UpdateEscState() {
     _op_brushless_drive.obs_angle_.get(*_serial_interface->GetIquartInterface());
     _client_manager->HandleClientCommunication();
-    if (_op_brushless_drive.obs_angle_.IsFresh()) {
+    bool is_fresh = _op_brushless_drive.obs_angle_.IsFresh();
+    if (is_fresh) {
         _esc_obs_angle = _op_brushless_drive.obs_angle_.get_reply();
     }
 }
