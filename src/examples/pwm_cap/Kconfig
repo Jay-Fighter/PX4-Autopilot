@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_PWM_CAP
+	bool "pwm_cap"
+	default n
+	---help---
+		Enable support for pwm_cap

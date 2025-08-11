@@ -100,7 +100,7 @@
 #define CCMR1_PWMIN		((0x02 << GTIM_CCMR1_CC2S_SHIFT) | (0x01 << GTIM_CCMR1_CC1S_SHIFT))
 #define CCMR2_PWMIN		0
 #define CCER_PWMIN		(GTIM_CCER_CC2P | GTIM_CCER_CC1E | GTIM_CCER_CC2E)
-#define SR_OVF_PWMIN		(GTIM_SR_CC1OF | GTIM_SR_CC2OF)
+#define SR_OVF_PWMIN		(GTIM_SR_CC1OF | GTIM_SR_CC2OF) // 这是“溢出”标志位宏
 #define SMCR_PWMIN_1		(0x05 << GTIM_SMCR_TS_SHIFT)
 #define SMCR_PWMIN_2		((0x04 << GTIM_SMCR_SMS_SHIFT) | SMCR_PWMIN_1)
 #elif PWMIN_TIMER_CHANNEL == 2
@@ -147,5 +147,9 @@ private:
 	pwm_input_s _pwm {};
 
 	uORB::PublicationData<pwm_input_s> _pwm_input_pub{ORB_ID(pwm_input)};
+
+	uint32_t _periods[4] {};       // 存储4路PWM周期
+	uint32_t _pulse_widths[4] {};  // 存储4路PWM脉冲宽度
+	uint32_t _pulse_counts[4] {};  // 存储4路PWM捕获计数
 
 };

@@ -33,6 +33,7 @@
 
 #include "pwm_input.h"
 #include <px4_arch/io_timer.h>
+#include "px4_platform_common/log.h"
 
 int
 PWMIN::task_spawn(int argc, char *argv[])
@@ -79,7 +80,7 @@ PWMIN::timer_init(void)
 			int ret2 = io_timer_allocate_timer(timer_io_channels[i].timer_index, IOTimerChanMode_PWMIn);
 
 			if (ret1 != 0 || ret2 != 0) {
-				PX4_ERR("timer/channel alloc failed (%i %i)", ret1, ret2);
+				PX4_ERR("timer/channel alloc failed at index %d (ret1: %i, ret2: %i)", i, ret1, ret2);
 				return;
 			}
 		}

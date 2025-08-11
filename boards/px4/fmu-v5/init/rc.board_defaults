@@ -23,3 +23,4 @@ fi
 
 rgbled_pwm start
 safety_button start
+# pwm_input start
