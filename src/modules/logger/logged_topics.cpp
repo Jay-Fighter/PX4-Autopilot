@@ -289,6 +289,11 @@ void LoggedTopics::add_debug_topics()
 	add_topic("mag_worker_data");
 	add_topic("sensor_preflight_mag", 500);
 	add_topic("actuator_test", 500);
+
+	//add by jay
+	add_topic("omni_modulation_cmd");
+	add_topic("omni_modulation_cmd_param");
+	add_topic("omni_pwm_cap");
 }
 
 void LoggedTopics::add_estimator_replay_topics()

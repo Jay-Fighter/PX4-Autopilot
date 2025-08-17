@@ -31,13 +31,10 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__pwm_input
-	MAIN pwm_input
-	COMPILE_FLAGS
-		-Wno-pmf-conversions
-		-Wno-cast-align # TODO: fix and enable
+	MODULE examples__pwm_cap
+	MAIN pwm_cap
+	STACK_MAIN 2000
 	SRCS
-		pwm_input.cpp
+		pwm_cap.cpp
 	DEPENDS
-		omniswashplateless
 	)

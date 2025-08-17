@@ -31,7 +31,8 @@
 		"uavcan.dsdl",
 		"wholroyd.jinja",
 		"zixuanwang.linkerscript",
-		"ms-vscode.makefile-tools"
+		"ms-vscode.makefile-tools",
+		"llvm-vs-code-extensions.vscode-clangd"
 	],
 
 	"containerUser": "user",

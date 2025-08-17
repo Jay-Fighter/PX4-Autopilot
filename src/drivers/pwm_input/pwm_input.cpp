@@ -114,7 +114,7 @@ PWMIN::timer_init(void)
 	/* for simplicity scale by the clock in MHz. This gives us
 	 * readings in microseconds which is typically what is needed
 	 * for a PWM input driver */
-	uint32_t prescaler = PWMIN_TIMER_CLOCK / 1000000UL;
+	uint32_t prescaler = PWMIN_TIMER_CLOCK / 9000000UL;
 
 	/*
 	 * define the clock speed. We want the highest possible clock
@@ -144,6 +144,7 @@ PWMIN::pwmin_tim_isr(int irq, void *context, void *arg)
 	uint16_t status = rSR;
 	uint32_t period = rCCR_PWMIN_A;
 	uint32_t pulse_width = rCCR_PWMIN_B;
+	irqstate_t flags = px4_enter_critical_section();
 
 	/* ack the interrupts we just read */
 	rSR = 0;
@@ -153,7 +154,7 @@ PWMIN::pwmin_tim_isr(int irq, void *context, void *arg)
 	if (obj != nullptr) {
 		obj->publish(status, period, pulse_width);
 	}
-
+	px4_leave_critical_section(flags);
 	return PX4_OK;
 }
 
@@ -186,6 +187,9 @@ PWMIN::print_status()
 		 static_cast<unsigned>(_pulses_captured),
 		 static_cast<unsigned>(_last_period),
 		 static_cast<unsigned>(_last_width));
+		 	// bool flag = true;
+	// uint16_t val = _omniSwashPlateLess.speedCtrl4Dshot(flag);
+	// PX4_INFO("OmniSwashPlateLess speedCtrl4Dshot: %u", val);
 	return 0;
 }
 

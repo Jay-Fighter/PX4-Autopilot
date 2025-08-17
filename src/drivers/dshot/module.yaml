@@ -74,3 +74,34 @@ parameters:
                     Typical motors for 5 inch props have 14 poles.
             type: int32
             default: 14
+    #add by jay
+    - group: Omni Swashplateless Test
+      definitions:
+        OMNI_UA:
+            description:
+                short: Module Param - Average velocity for swashplatess mechanism
+                long: |
+                    DC component u_a, i.e. baseline setpoint velocity (unit: RPM)
+            type: float
+            default: 0
+            min: 0.0
+            max: 1.0
+        OMNI_US:
+            description:
+                short: Module Param - Sinusoidal velocity amplitude
+                long: |
+                    Amplitude u_s of the sinusoidal modulation added to the baseline velocity (unit: RPM)
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 1.0
+        OMNI_PHASE:
+            description:
+                short: Module Param - Sinusoidal phase offset
+                long: |
+                      Phase shift \alpha for the sinusoidal term sin(φ – \alpha) (unit: rad)
+            type: float
+            default: 0.0
+            min: -6.283
+            max: 6.283
+    #end add by jay

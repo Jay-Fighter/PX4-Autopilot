@@ -42,6 +42,8 @@
 
 #include "DShotTelemetry.h"
 
+#include "OmniSwashplateless.h"
+
 using namespace time_literals;
 
 #if !defined(DIRECT_PWM_OUTPUT_CHANNELS)
@@ -182,4 +184,6 @@ private:
 		(ParamInt<px4::params::MOT_POLE_COUNT>) _param_mot_pole_count,
 		(ParamBool<px4::params::DSHOT_BIDIR_EN>) _param_bidirectional_enable
 	)
+
+	OmniSwashPlateLess _omniSwashPlateLess;
 };

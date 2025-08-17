@@ -302,6 +302,27 @@
 #define RC_SERIAL_SINGLEWIRE
 #define BOARD_SUPPORTS_RC_SERIAL_PORT_OUTPUT
 
+#define GPIO_TIM1_CH2_IN     /* PE11   T12C1  FMU_CAP1 AUX3*/ GPIO_TIM1_CH2IN_2
+#define GPIO_TIM1_CH3_IN     /* PA10   T12C2  FMU_CAP2 AUX2*/ GPIO_TIM1_CH3IN_1
+#define GPIO_TIM4_CH2_IN     /* PD13   T42C2  FMU_CAP3 AUX5*/ GPIO_TIM4_CH2IN_2
+#define GPIO_TIM4_CH3_IN     /* PD14   T42C3  FMU_CAP4 AUX6*/ GPIO_TIM4_CH3IN_2
+
+#define INPUT_CAP1_TIMER                  1
+#define INPUT_CAP1_CHANNEL     /* T1C1 */ 2
+#define GPIO_INPUT_CAP1        /* PE14 */ GPIO_TIM1_CH2_IN
+
+// #define INPUT_CAP2_TIMER                  1
+// #define INPUT_CAP2_CHANNEL     /* T1C1 */ 3
+// #define GPIO_INPUT_CAP2        /* PE14 */ GPIO_TIM1_CH3_IN
+
+// #define INPUT_CAP3_TIMER                  4
+// #define INPUT_CAP3_CHANNEL     /* T1C1 */ 2
+// #define GPIO_INPUT_CAP3        /* PD13 */ GPIO_TIM4_CH2_IN
+
+// #define INPUT_CAP4_TIMER                  4
+// #define INPUT_CAP4_CHANNEL     /* T1C1 */ 3
+// #define GPIO_INPUT_CAP4        /* PD14 */ GPIO_TIM4_CH3_IN
+
 /* PWM input driver. Use FMU AUX5 pins attached to timer4 channel 2 */
 #define PWMIN_TIMER                       4
 #define PWMIN_TIMER_CHANNEL    /* T4C2 */ 2

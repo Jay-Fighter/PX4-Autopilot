@@ -263,6 +263,10 @@ set(msg_files
 	versioned/VehicleRatesSetpoint.msg
 	versioned/VehicleStatus.msg
 	versioned/VtolVehicleStatus.msg
+	# add by jay
+	omni_swashplateless/OmniModulationCmd.msg
+	omni_swashplateless/OmniModulationCmdParam.msg
+	omni_swashplateless/OmniPwmCap.msg
 )
 list(SORT msg_files)
 
