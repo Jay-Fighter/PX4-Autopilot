@@ -19,12 +19,13 @@
 #include <uORB/topics/omni_modulation_cmd.h>
 #include <uORB/topics/omni_modulation_cmd_param.h>
 #include <uORB/topics/omni_pwm_cap.h>
+#include <uORB/topics/omni_motor_telemetry.h>
 
 #define OMNI_DEBUG 1
 
-#define SENSOR_PWM_MAX (9658)
-#define SENSOR_PWM_MIN (292)
-#define SENSOR_ROTOR_ANGLE_BIAS (0.0)  // deg, encoder installation offset angle
+#define SENSOR_PWM_MAX (9500)
+#define SENSOR_PWM_MIN (294)
+#define SENSOR_ROTOR_ANGLE_BIAS (0.0)    // deg, encoder installation offset angle
 
 // #define DSHOT_THROTTLE_MIN (50)
 // #define DSHOT_THROTTLE_MAX (1800)
@@ -41,7 +42,11 @@ class OmniSwashPlateLess : public ModuleParams {
    public:
     OmniSwashPlateLess();
 
+    void mortorStateEstimate();
+
     float motorAngleCal(omni_pwm_cap_s& pwm_input_cap);
+
+    float motorVelocityCal(omni_pwm_cap_s& pwm_input_cap);
 
     void modulationCmdCal();
 
@@ -56,8 +61,10 @@ class OmniSwashPlateLess : public ModuleParams {
     /*Variable Definition*/
     pwm_input_s pwm_input_cap_data{0};
     omni_modulation_cmd_s _single_modu_cmd{0};
-    omni_modulation_cmd_param_s _single_modu_cmd_param{0};
-    omni_pwm_cap_s _pwm_input_cap{0};  // pwm cap data from ORB_ID(pwm_input)
+    omni_modulation_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
+    omni_pwm_cap_s _pwm_input_cap{0};                       // pwm cap data from ORB_ID(pwm_input)
+    omni_motor_telemetry_s _motor_telemetry{0};
+    float _motor_zero_bias{0.0f};  // rad, motor zero bias, used for motor angle calibration
 
     /*uORB Subscriber*/
     uORB::Subscription pwm_input_sub{ORB_ID(pwm_input)};
@@ -67,11 +74,12 @@ class OmniSwashPlateLess : public ModuleParams {
     uORB::Publication<omni_modulation_cmd_s> _single_modulation_cmd_pub{ORB_ID(omni_modulation_cmd)};
     uORB::Publication<omni_modulation_cmd_param_s> _single_modulation_cmd_param_pub{ORB_ID(omni_modulation_cmd_param)};
     uORB::Publication<omni_pwm_cap_s> _single_pwm_input_cap_pub{ORB_ID(omni_pwm_cap)};
+    uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
-        (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
-        (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase
+        (ParamFloat<px4::params::MOTOR_ZERO_BIAS>)_param_omni_motor_zero_bias, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ua,
+        (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase
 #endif
     )
 };

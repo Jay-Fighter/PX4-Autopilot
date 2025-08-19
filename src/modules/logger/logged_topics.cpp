@@ -294,6 +294,8 @@ void LoggedTopics::add_debug_topics()
 	add_topic("omni_modulation_cmd");
 	add_topic("omni_modulation_cmd_param");
 	add_topic("omni_pwm_cap");
+	add_topic("pwm_input");
+	add_topic("omni_motor_telemetry");
 }
 
 void LoggedTopics::add_estimator_replay_topics()
