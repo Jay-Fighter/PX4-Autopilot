@@ -23,12 +23,12 @@
 
 #define OMNI_DEBUG 1
 
+#define OMNI_TEST_UA_THRUST 0
+
 #define SENSOR_PWM_MAX (9500)
 #define SENSOR_PWM_MIN (294)
-#define SENSOR_ROTOR_ANGLE_BIAS (0.0)    // deg, encoder installation offset angle
+#define SENSOR_ROTOR_ANGLE_BIAS (0.0)  // deg, encoder installation offset angle
 
-// #define DSHOT_THROTTLE_MIN (50)
-// #define DSHOT_THROTTLE_MAX (1800)
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)

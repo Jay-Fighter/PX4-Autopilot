@@ -1,6 +1,8 @@
 #include "OmniSwashplateless.h"
+#include <sys/stat.h>
 #include <sys/types.h>
 #include "commander/Commander.hpp"
+#include "drivers/drv_hrt.h"
 #include "mathlib/math/Limits.hpp"
 #include "px4_platform_common/log.h"
 #include "uORB/topics/pwm_input.h"
@@ -146,7 +148,12 @@ uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
     return throttle_2_dshot;
 }
 void OmniSwashPlateLess::update_test_params() {
+	
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+
     // clear update
+
     if (_parameter_update_sub.updated()) {
         parameter_update_s param_update;
         _parameter_update_sub.copy(&param_update);
@@ -161,4 +168,34 @@ void OmniSwashPlateLess::update_test_params() {
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
     }
+
+#if OMNI_TEST_UA_THRUST == 1
+    // ua increase;us constant
+    hrt_abstime now = hrt_absolute_time();
+    if (!stop_increment && (now - _last_increment_time) > 5_s) {
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.05f;  // 累加
+        _last_increment_time = now;                             // 更新时间戳
+        if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.76f) {
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
+            stop_increment = true;
+        }
+    }
+
+#elif OMNI_TEST_UA_THRUST == 0
+    // us increase;ua constant
+    hrt_abstime now = hrt_absolute_time();
+    if (!stop_increment && (now - _last_increment_time) > 5_s) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.05f;  // 累加
+        _last_increment_time = now;                             // 更新时间戳
+        if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.36f) {
+            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
+            stop_increment = true;
+        }
+    }
+#endif
+
+    _single_modu_cmd_param.timestamp = hrt_absolute_time();
+
+    // publish
+    _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
 }
