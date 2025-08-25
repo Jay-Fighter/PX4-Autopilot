@@ -148,9 +148,6 @@ uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
     return throttle_2_dshot;
 }
 void OmniSwashPlateLess::update_test_params() {
-	
-    static hrt_abstime _last_increment_time = hrt_absolute_time();
-    static bool stop_increment = false;
 
     // clear update
 
@@ -170,25 +167,30 @@ void OmniSwashPlateLess::update_test_params() {
     }
 
 #if OMNI_TEST_UA_THRUST == 1
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
     // ua increase;us constant
     hrt_abstime now = hrt_absolute_time();
-    if (!stop_increment && (now - _last_increment_time) > 5_s) {
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.05f;  // 累加
         _last_increment_time = now;                             // 更新时间戳
-        if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.76f) {
+        if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.69f) {
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
             stop_increment = true;
         }
     }
 
 #elif OMNI_TEST_UA_THRUST == 0
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
     // us increase;ua constant
     hrt_abstime now = hrt_absolute_time();
-    if (!stop_increment && (now - _last_increment_time) > 5_s) {
-        _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.05f;  // 累加
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.02f;  // 累加
         _last_increment_time = now;                             // 更新时间戳
-        if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.36f) {
+        if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
             stop_increment = true;
         }
     }
