@@ -124,7 +124,7 @@ void OmniSwashPlateLess::mix_throttle() {
     // calculate the throttle value for dshot
     float throttle_dc = _single_modu_cmd.actuator_ctrls_ua;  // DC component of the throttle
 
-    float throttle_sin = _single_modu_cmd.actuator_ctrls_us * cosf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha +
+    float throttle_sin = _single_modu_cmd.actuator_ctrls_us * sinf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha +
                                                                    _motor_zero_bias);  // Sine component of the throttle
 
     _single_modu_cmd.throttle = static_cast<uint16_t>(throttle_dc + throttle_sin);
@@ -147,6 +147,79 @@ uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
     uint16_t throttle_2_dshot = _single_modu_cmd.throttle;
     return throttle_2_dshot;
 }
+// void OmniSwashPlateLess::update_test_params() {
+
+//     // clear update
+
+//     if (_parameter_update_sub.updated()) {
+//         parameter_update_s param_update;
+//         _parameter_update_sub.copy(&param_update);
+
+//         // update parameters from storage
+//         updateParams();
+//         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
+//         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
+//         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
+//         _single_modu_cmd_param.timestamp = hrt_absolute_time();
+
+//         // publish
+//         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
+//     }
+
+// #if OMNI_TEST_UA_THRUST == 1
+//     /*Test1: Fixed us=0, ua increment*/
+//     static hrt_abstime _last_increment_time = hrt_absolute_time();
+//     static bool stop_increment = false;
+//     float dt = 0.002f;  // Run() 循环周期 (500Hz)
+//     float tau = 2.0f;   // 平滑时间常数 (秒)
+//     float alpha = dt / (tau + dt);
+//     hrt_abstime now = hrt_absolute_time();
+//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
+//         _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.05f;  // 累加
+//         _last_increment_time = now;                             // 更新时间戳
+//         if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.69f) {
+//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
+//             stop_increment = true;
+//         }
+//     }
+
+// #elif OMNI_TEST_UA_THRUST == 0
+//     /*Test2: Fixed ua, us increment*/
+//     static hrt_abstime _last_increment_time = hrt_absolute_time();
+//     static bool stop_increment = false;
+//     hrt_abstime now = hrt_absolute_time();
+//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
+//         _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.02f;  // 累加
+//         _last_increment_time = now;                             // 更新时间戳
+//         if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
+//             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
+//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
+//             stop_increment = true;
+//         }
+//     }
+// #elif OMNI_TEST_UA_THRUST == 2
+//     /*Test3: Fixed us, ua increment*/
+//     static hrt_abstime _last_increment_time = hrt_absolute_time();
+//     static bool stop_increment = false;
+//     hrt_abstime now = hrt_absolute_time();
+//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
+//         _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.02f;
+//         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.20f;  // TODO
+//         _last_increment_time = now;
+//         if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
+//             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
+//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
+//             stop_increment = true;
+//         }
+//     }
+// #endif
+
+//     _single_modu_cmd_param.timestamp = hrt_absolute_time();
+
+//     // publish
+//     _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
+// }
+
 void OmniSwashPlateLess::update_test_params() {
 
     // clear update
@@ -166,34 +239,87 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
     }
 
-#if OMNI_TEST_UA_THRUST == 1
+#if OMNI_TEST_UA_THRUST == 0
+    /* Test1: Fixed us=0, ua increment with smooth ramp */
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
-    // ua increase;us constant
+    static float target_ua = 0.0f;  // 目标值
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
     hrt_abstime now = hrt_absolute_time();
+
     if (!stop_increment && (now - _last_increment_time) > 10_s) {
-        _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.05f;  // 累加
-        _last_increment_time = now;                             // 更新时间戳
-        if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.69f) {
-            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
-            stop_increment = true;
+        target_ua += 0.05f;
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+        _last_increment_time = now;
+
+        if (target_ua > 0.60f) {
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
         }
     }
 
-#elif OMNI_TEST_UA_THRUST == 0
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+    }
+
+#elif OMNI_TEST_UA_THRUST == 1
+    /*Test2: Fixed ua, us increment with smooth ramp */
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
-    // us increase;ua constant
+    static float target_us = 0.0f;  // 目标值
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
     hrt_abstime now = hrt_absolute_time();
     if (!stop_increment && (now - _last_increment_time) > 10_s) {
-        _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.02f;  // 累加
-        _last_increment_time = now;                             // 更新时间戳
-        if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
-            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
-            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
-            stop_increment = true;
+        target_us += 0.05f;
+        _last_increment_time = now;
+
+        if (target_us > 0.30f) {
+            target_us = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
         }
     }
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
+    }
+
+#elif OMNI_TEST_UA_THRUST == 2
+    /*Test3: Fixed us, ua increment with smooth ramp*/
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+    static float target_ua = 0.0f;  // 目标值
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
+    hrt_abstime now = hrt_absolute_time();
+
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+
+        target_ua += 0.05f;
+        _last_increment_time = now;
+
+        if (target_ua > 0.50f) {
+            target_ua = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
+        }
+    }
+
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+    }
+
 #endif
 
     _single_modu_cmd_param.timestamp = hrt_absolute_time();
