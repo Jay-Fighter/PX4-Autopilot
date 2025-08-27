@@ -59,7 +59,9 @@ float OmniSwashPlateLess::motorAngleCal(omni_pwm_cap_s& pwm_input_cap) {
     }
 
     // add the angle bias
-    rotor_angle -= static_cast<float>(SENSOR_ROTOR_ANGLE_BIAS);
+    rotor_angle -= _motor_zero_bias * RAD_2_DEG;
+    PX4_INFO("rotor_angle: %f", (double)rotor_angle);
+    PX4_INFO("_motor_zero_bias: %f", (double)_motor_zero_bias);
 
     // remap to 0~360 deg
     if (rotor_angle < 0)
@@ -124,11 +126,13 @@ void OmniSwashPlateLess::mix_throttle() {
     // calculate the throttle value for dshot
     float throttle_dc = _single_modu_cmd.actuator_ctrls_ua;  // DC component of the throttle
 
-    float throttle_sin = _single_modu_cmd.actuator_ctrls_us * sinf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha +
-                                                                   _motor_zero_bias);  // Sine component of the throttle
+    float throttle_sin = _single_modu_cmd.actuator_ctrls_us * cosf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha -
+                                                                   static_cast<float>(MOTOR_DELAY_ANLGE_BIAS));  // Sine component of the throttle
 
     _single_modu_cmd.throttle = static_cast<uint16_t>(throttle_dc + throttle_sin);
     _single_modu_cmd.throttle = constrain(_single_modu_cmd.throttle, DSHOT_THROTTLE_MIN, DSHOT_THROTTLE_MAX);
+    _single_modu_cmd.throttle_dc = throttle_dc;
+    _single_modu_cmd.throttle_ac = throttle_sin;
     _single_modu_cmd.timestamp = hrt_absolute_time();
 
     // publish for logging
@@ -147,78 +151,6 @@ uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
     uint16_t throttle_2_dshot = _single_modu_cmd.throttle;
     return throttle_2_dshot;
 }
-// void OmniSwashPlateLess::update_test_params() {
-
-//     // clear update
-
-//     if (_parameter_update_sub.updated()) {
-//         parameter_update_s param_update;
-//         _parameter_update_sub.copy(&param_update);
-
-//         // update parameters from storage
-//         updateParams();
-//         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
-//         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
-//         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
-//         _single_modu_cmd_param.timestamp = hrt_absolute_time();
-
-//         // publish
-//         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
-//     }
-
-// #if OMNI_TEST_UA_THRUST == 1
-//     /*Test1: Fixed us=0, ua increment*/
-//     static hrt_abstime _last_increment_time = hrt_absolute_time();
-//     static bool stop_increment = false;
-//     float dt = 0.002f;  // Run() 循环周期 (500Hz)
-//     float tau = 2.0f;   // 平滑时间常数 (秒)
-//     float alpha = dt / (tau + dt);
-//     hrt_abstime now = hrt_absolute_time();
-//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
-//         _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.05f;  // 累加
-//         _last_increment_time = now;                             // 更新时间戳
-//         if (_single_modu_cmd_param.actuator_ctrls_ua_qgc > 0.69f) {
-//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
-//             stop_increment = true;
-//         }
-//     }
-
-// #elif OMNI_TEST_UA_THRUST == 0
-//     /*Test2: Fixed ua, us increment*/
-//     static hrt_abstime _last_increment_time = hrt_absolute_time();
-//     static bool stop_increment = false;
-//     hrt_abstime now = hrt_absolute_time();
-//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
-//         _single_modu_cmd_param.actuator_ctrls_us_qgc += 0.02f;  // 累加
-//         _last_increment_time = now;                             // 更新时间戳
-//         if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
-//             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
-//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
-//             stop_increment = true;
-//         }
-//     }
-// #elif OMNI_TEST_UA_THRUST == 2
-//     /*Test3: Fixed us, ua increment*/
-//     static hrt_abstime _last_increment_time = hrt_absolute_time();
-//     static bool stop_increment = false;
-//     hrt_abstime now = hrt_absolute_time();
-//     if (!stop_increment && (now - _last_increment_time) > 10_s) {
-//         _single_modu_cmd_param.actuator_ctrls_ua_qgc += 0.02f;
-//         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.20f;  // TODO
-//         _last_increment_time = now;
-//         if (_single_modu_cmd_param.actuator_ctrls_us_qgc > 0.25f) {
-//             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.00f;
-//             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.00f;
-//             stop_increment = true;
-//         }
-//     }
-// #endif
-
-//     _single_modu_cmd_param.timestamp = hrt_absolute_time();
-
-//     // publish
-//     _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
-// }
 
 void OmniSwashPlateLess::update_test_params() {
 
@@ -234,6 +166,8 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
+
+        _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
 
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
@@ -256,7 +190,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
         _last_increment_time = now;
 
-        if (target_ua > 0.60f) {
+        if (target_ua > 0.50f) {
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
             stop_increment = true;  // 达到上限后停止
         }

@@ -25,9 +25,9 @@
 
 #define OMNI_TEST_UA_THRUST 0
 
-#define SENSOR_PWM_MAX (9500)
-#define SENSOR_PWM_MIN (294)
-#define SENSOR_ROTOR_ANGLE_BIAS (0.0)  // deg, encoder installation offset angle
+#define SENSOR_PWM_MAX (9713)
+#define SENSOR_PWM_MIN (340)
+#define MOTOR_DELAY_ANLGE_BIAS (2.88)  // TODO:确定滞后角
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;

@@ -106,9 +106,9 @@ parameters:
             max: 360.0
         MOTOR_ZERO_BIAS:
             description:
-                short: Module Param - Motor position zero bias
+                short: Module Param - The angle between the positive blade and the y-axis of the body is zero degree position(deg)
                 long: |
-                      The angle between the positive blade and the y-axis of the body is zero degree position(unit: deg)
+                      Set it to 0 first and read the angle value as the bias value
             type: float
             default: 0.0
             min: 0.0
