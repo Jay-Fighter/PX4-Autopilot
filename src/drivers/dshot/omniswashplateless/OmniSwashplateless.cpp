@@ -1,6 +1,7 @@
 #include "OmniSwashplateless.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cstdio>
 #include "commander/Commander.hpp"
 #include "drivers/drv_hrt.h"
 #include "mathlib/math/Limits.hpp"
@@ -11,7 +12,10 @@ constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
 constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
 
 OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr) {
-    update_test_params();
+    _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
+    _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
+    _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
+
     _pwm_input_cap.max_pulse_width = SENSOR_PWM_MAX;
     _pwm_input_cap.min_pulse_width = SENSOR_PWM_MIN;
     _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
@@ -60,8 +64,6 @@ float OmniSwashPlateLess::motorAngleCal(omni_pwm_cap_s& pwm_input_cap) {
 
     // add the angle bias
     rotor_angle -= _motor_zero_bias * RAD_2_DEG;
-    PX4_INFO("rotor_angle: %f", (double)rotor_angle);
-    PX4_INFO("_motor_zero_bias: %f", (double)_motor_zero_bias);
 
     // remap to 0~360 deg
     if (rotor_angle < 0)

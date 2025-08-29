@@ -23,7 +23,7 @@
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_UA_THRUST 0
+#define OMNI_TEST_UA_THRUST 2
 
 #define SENSOR_PWM_MAX (9713)
 #define SENSOR_PWM_MIN (340)
