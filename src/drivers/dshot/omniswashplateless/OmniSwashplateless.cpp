@@ -192,7 +192,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
         _last_increment_time = now;
 
-        if (target_ua > 0.50f) {
+        if (target_ua > 0.51f) {
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
             stop_increment = true;  // 达到上限后停止
         }
@@ -217,7 +217,7 @@ void OmniSwashPlateLess::update_test_params() {
         target_us += 0.05f;
         _last_increment_time = now;
 
-        if (target_us > 0.30f) {
+        if (target_us > 0.40f) {
             target_us = 0.0f;
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
             stop_increment = true;  // 达到上限后停止
@@ -244,7 +244,7 @@ void OmniSwashPlateLess::update_test_params() {
         target_ua += 0.05f;
         _last_increment_time = now;
 
-        if (target_ua > 0.50f) {
+        if (target_ua > 0.51f) {
             target_ua = 0.0f;
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
