@@ -27,7 +27,7 @@
 
 #define SENSOR_PWM_MAX (9713)
 #define SENSOR_PWM_MIN (340)
-#define MOTOR_DELAY_ANLGE_BIAS (2.88)  // TODO:确定滞后角
+#define MOTOR_DELAY_ANLGE_BIAS (0.0)  // TODO:确定滞后角
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
