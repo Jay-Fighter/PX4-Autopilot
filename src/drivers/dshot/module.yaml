@@ -113,4 +113,13 @@ parameters:
             default: 0.0
             min: 0.0
             max: 360.0
+        ENCODER_ROT_DIR:
+            description:
+                short: Module Param - The direction of rotation of the encoder
+                long: |
+                      clockwise 0 and counterclockwise 1
+            type: int32
+            default: 0
+            min: 0
+            max: 1
     #end add by jay

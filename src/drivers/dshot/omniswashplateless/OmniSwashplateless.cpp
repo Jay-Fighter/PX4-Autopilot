@@ -53,13 +53,16 @@ float OmniSwashPlateLess::motorAngleCal(omni_pwm_cap_s& pwm_input_cap) {
     pwm_input_cap.pulse_width_range = abs(pwm_input_cap.max_pulse_width - pwm_input_cap.min_pulse_width);
 
     // calculate the motor angle
-    float rotor_angle = float(pwm_input_cap.pulse_width - pwm_input_cap.min_pulse_width) / float(pwm_input_cap.pulse_width_range) * 360.0f;
+    // 归一化 [0,1]
+    float norm = (float(pwm_input_cap.pulse_width - pwm_input_cap.min_pulse_width) / float(pwm_input_cap.pulse_width_range));
+    norm = math::constrain(norm, 0.0f, 1.0f);
 
-    // add the angle limit
-    if (rotor_angle > 360) {
-        rotor_angle = 360.0f;
-    } else if (rotor_angle < 0) {
-        rotor_angle = 0.0f;
+    // 根据方向算角度
+    float rotor_angle;
+    if (_encoder_rot_dir == 0) {
+        rotor_angle = norm * 360.0f;
+    } else {
+        rotor_angle = (1.0f - norm) * 360.0f;
     }
 
     // add the angle bias
@@ -169,7 +172,10 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
+        // get motor zero bias param
         _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
+        // get encoder rot dir param
+        _encoder_rot_dir = _param_encoder_rot_dir.get();
 
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
