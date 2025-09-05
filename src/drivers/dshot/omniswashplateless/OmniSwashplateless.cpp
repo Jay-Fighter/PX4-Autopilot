@@ -132,7 +132,7 @@ void OmniSwashPlateLess::mix_throttle() {
     float throttle_dc = _single_modu_cmd.actuator_ctrls_ua;  // DC component of the throttle
 
     float throttle_sin = _single_modu_cmd.actuator_ctrls_us * cosf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha -
-                                                                   static_cast<float>(MOTOR_DELAY_ANLGE_BIAS));  // Sine component of the throttle
+                                                                   _motor_delay_angle_bias_rad);  // Sine component of the throttle
 
     _single_modu_cmd.throttle = static_cast<uint16_t>(throttle_dc + throttle_sin);
     _single_modu_cmd.throttle = constrain(_single_modu_cmd.throttle, DSHOT_THROTTLE_MIN, DSHOT_THROTTLE_MAX);
@@ -174,8 +174,12 @@ void OmniSwashPlateLess::update_test_params() {
 
         // get motor zero bias param
         _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
+
         // get encoder rot dir param
         _encoder_rot_dir = _param_encoder_rot_dir.get();
+
+        // get motor delay angle bias
+        _motor_delay_angle_bias_rad = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
 
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);

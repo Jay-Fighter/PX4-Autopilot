@@ -27,7 +27,6 @@
 
 #define SENSOR_PWM_MAX (8200)
 #define SENSOR_PWM_MIN (24)
-#define MOTOR_DELAY_ANLGE_BIAS (0.0)  // TODO:确定滞后角
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
@@ -66,6 +65,7 @@ class OmniSwashPlateLess : public ModuleParams {
     omni_motor_telemetry_s _motor_telemetry{0};
     float _motor_zero_bias{0.0f};  // rad, motor zero bias, used for motor angle calibration
     int32_t _encoder_rot_dir{0};   // encoder rotation direction
+    float _motor_delay_angle_bias_rad{0.0f};
 
     /*uORB Subscriber*/
     uORB::Subscription pwm_input_sub{ORB_ID(pwm_input)};
@@ -81,7 +81,7 @@ class OmniSwashPlateLess : public ModuleParams {
 #ifdef OMNI_DEBUG
         (ParamFloat<px4::params::MOTOR_ZERO_BIAS>)_param_omni_motor_zero_bias, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ua,
         (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-        (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rot_dir
+        (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rot_dir, (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
 #endif
     )
 };

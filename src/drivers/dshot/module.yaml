@@ -122,4 +122,11 @@ parameters:
             default: 0
             min: 0
             max: 1
+        MOTOR_DELAY_BIAS:
+            description:
+                short: Module Param - Propeller lag angle
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 360.0
     #end add by jay
