@@ -160,7 +160,6 @@ uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
 void OmniSwashPlateLess::update_test_params() {
 
     // clear update
-
     if (_parameter_update_sub.updated()) {
         parameter_update_s param_update;
         _parameter_update_sub.copy(&param_update);
@@ -170,6 +169,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
+        _single_modu_cmd_param.motor_lag_angle_deg_qgc = _param_motor_delay_angle_bias.get();
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
         // get motor zero bias param
@@ -185,7 +185,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
     }
 
-#if OMNI_TEST_UA_THRUST == 0
+#if OMNI_TEST_MODE_SELECTED == 0
     /* Test1: Fixed us=0, ua increment with smooth ramp */
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
@@ -212,7 +212,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
     }
 
-#elif OMNI_TEST_UA_THRUST == 1
+#elif OMNI_TEST_MODE_SELECTED == 1
     /*Test2: Fixed ua, us increment with smooth ramp */
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
@@ -237,7 +237,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
     }
 
-#elif OMNI_TEST_UA_THRUST == 2
+#elif OMNI_TEST_MODE_SELECTED == 2
     /*Test3: Fixed us, ua increment with smooth ramp*/
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
