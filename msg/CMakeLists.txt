@@ -268,6 +268,7 @@ set(msg_files
 	omni_swashplateless/OmniModulationCmdParam.msg
 	omni_swashplateless/OmniPwmCap.msg
 	omni_swashplateless/OmniMotorTelemetry.msg
+	omni_swashplateless/WrenchSensorPub.msg
 )
 list(SORT msg_files)
 

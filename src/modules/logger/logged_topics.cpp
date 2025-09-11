@@ -297,6 +297,7 @@ void LoggedTopics::add_debug_topics()
 	add_topic("pwm_input");
 	add_topic("omni_motor_telemetry");
 	add_topic_multi("esc_status", 100, 2);
+	add_topic("wrench_sensor_pub");
 }
 
 void LoggedTopics::add_estimator_replay_topics()

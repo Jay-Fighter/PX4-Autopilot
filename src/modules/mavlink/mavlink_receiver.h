@@ -111,6 +111,7 @@
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/velocity_limits.h>
+#include <uORB/topics/wrench_sensor_pub.h>
 
 #if !defined(CONSTRAINED_FLASH)
 # include <uORB/topics/debug_array.h>
@@ -200,6 +201,9 @@ private:
 	void handle_message_statustext(mavlink_message_t *msg);
 	void handle_message_tunnel(mavlink_message_t *msg);
 	void handle_message_utm_global_position(mavlink_message_t *msg);
+	// add by jay
+	void handle_message_wrench_sensor_pub(mavlink_message_t *msg);
+	// end
 #if defined(MAVLINK_MSG_ID_SET_VELOCITY_LIMITS) // For now only defined if development.xml is used
 	void handle_message_set_velocity_limits(mavlink_message_t *msg);
 #endif
@@ -326,6 +330,9 @@ private:
 	uORB::Publication<vehicle_odometry_s>			_mocap_odometry_pub{ORB_ID(vehicle_mocap_odometry)};
 	uORB::Publication<vehicle_odometry_s>			_visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
 	uORB::Publication<vehicle_rates_setpoint_s>		_rates_sp_pub{ORB_ID(vehicle_rates_setpoint)};
+	// add by jay
+	uORB::Publication<wrench_sensor_pub_s>                  _wrench_sensor_pub{ORB_ID(wrench_sensor_pub)};
+	// end
 
 #if !defined(CONSTRAINED_FLASH)
 	uORB::Publication<debug_array_s>			_debug_array_pub {ORB_ID(debug_array)};
