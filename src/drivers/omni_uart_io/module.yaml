@@ -1,0 +1,18 @@
+module_name: Omni Uart IO
+serial_config:
+    - command: omni_uart_interface start -d ${SERIAL_DEV}
+      port_config_param:
+        name: OMNI_UART_IO_CFG
+        group: Omni Uart IO
+
+parameters:
+    - group: Omni Swashplateless Test
+      definitions:
+        OMNI_UART_BAUD:
+            description:
+                short: The OMNI driver's baud rate
+                long: |
+                    The baud rate (in bits per second) used by the serial port
+            type: int32
+            reboot_required: true
+            default: 115200

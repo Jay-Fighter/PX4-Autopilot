@@ -12,7 +12,7 @@ constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
 constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
 
 OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr) {
-    _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
+    _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
     _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
     _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
 
@@ -166,7 +166,7 @@ void OmniSwashPlateLess::update_test_params() {
 
         // update parameters from storage
         updateParams();
-        _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ua.get();
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
         _single_modu_cmd_param.motor_lag_angle_deg_qgc = _param_motor_delay_angle_bias.get();
@@ -266,6 +266,32 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
     }
 
+#elif OMNI_TEST_MODE_SELECTED == 3
+    /*Test4: Fixed us, us increment with smooth ramp*/
+
+#elif OMNI_TEST_MODE_SELECTED == 4
+    static hrt_abstime _last_increment_time = 0;
+    static float last_ua_param = NAN;
+
+    hrt_abstime now = hrt_absolute_time();
+
+    // 检测参数更新
+    float ua_now = _param_omni_actuator_ctrls_ua.get();
+
+    // 当 ua 被修改时，重新启动延迟
+    if (!PX4_ISFINITE(last_ua_param) || fabsf(ua_now - last_ua_param) > 1e-5f) {
+        _last_increment_time = now;
+    }
+
+    // 更新记录
+    last_ua_param = ua_now;
+
+    // === 延迟逻辑 ===
+    if ((now - _last_increment_time) < 1_s) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;  // 前 1 s 不加 us
+    } else {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();  // 之后恢复 us
+    }
 #endif
 
     _single_modu_cmd_param.timestamp = hrt_absolute_time();

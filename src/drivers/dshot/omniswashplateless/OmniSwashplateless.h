@@ -23,7 +23,7 @@
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_MODE_SELECTED 2
+#define OMNI_TEST_MODE_SELECTED 4
 
 #define SENSOR_PWM_MAX (8200)
 #define SENSOR_PWM_MIN (24)
@@ -79,7 +79,7 @@ class OmniSwashPlateLess : public ModuleParams {
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
-        (ParamFloat<px4::params::MOTOR_ZERO_BIAS>)_param_omni_motor_zero_bias, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ua,
+        (ParamFloat<px4::params::MOTOR_ZERO_BIAS>)_param_omni_motor_zero_bias, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
         (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
         (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rot_dir, (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
 #endif

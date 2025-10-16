@@ -1,0 +1,5 @@
+menuconfig DRIVERS_OMNI_UART_IO
+	bool "omni_serial_interface"
+	default y
+	---help---
+		Enable support for omni_uart_io
