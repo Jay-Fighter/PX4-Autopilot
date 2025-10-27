@@ -6,6 +6,8 @@
 #include <float.h>
 #include <math.h>
 #include <drivers/drv_hrt.h>
+#include <lib/perf/perf_counter.h>
+
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <uORB/uORB.h>
@@ -13,13 +15,11 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/pwm_input.h>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/omni_modulation_cmd.h>
+#include <uORB/topics/omni_packet_cmd.h>
 #include <uORB/topics/omni_modulation_cmd_param.h>
-#include <uORB/topics/omni_pwm_cap.h>
-#include <uORB/topics/omni_motor_telemetry.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
 #define OMNI_DEBUG 1
 
@@ -37,45 +37,51 @@ constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 
 using time_literals::operator""_s;
 
-class OmniSwashPlateLess : public ModuleParams {
+class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleParams, public px4::ScheduledWorkItem {
    public:
     OmniSwashPlateLess();
+    ~OmniSwashPlateLess();
 
-    void mortorStateEstimate();
+    /** @see ModuleBase */
+    static int task_spawn(int argc, char* argv[]);
 
-    float motorAngleCal(omni_pwm_cap_s& pwm_input_cap);
+    /** @see ModuleBase */
+    static int custom_command(int argc, char* argv[]);
 
-    float motorVelocityCal(omni_pwm_cap_s& pwm_input_cap);
+    /** @see ModuleBase */
+    static int print_usage(const char* reason = nullptr);
+
+    bool init();
+
+    void Run() override;
+
+    /** @see ModuleBase::print_status() */
+    int print_status() override;
 
     void modulationCmdCal();
 
-    void mix_throttle();
-
-    uint16_t speedCtrl4Dshot(bool on_flag);
+    void publish_throttle();
 
     // for test get params from QGC
     void update_test_params();
 
    private:
     /*Variable Definition*/
-    pwm_input_s pwm_input_cap_data{0};
-    omni_modulation_cmd_s _single_modu_cmd{0};
+    omni_packet_cmd_s _single_modu_packet_cmd{0};
     omni_modulation_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
-    omni_pwm_cap_s _pwm_input_cap{0};                       // pwm cap data from ORB_ID(pwm_input)
-    omni_motor_telemetry_s _motor_telemetry{0};
-    float _motor_zero_bias{0.0f};  // rad, motor zero bias, used for motor angle calibration
-    int32_t _encoder_rot_dir{0};   // encoder rotation direction
-    float _motor_delay_angle_bias_rad{0.0f};
+    float _motor_zero_bias{0.0f};                           // rad, motor zero bias, used for motor angle calibration
+    int32_t _encoder_rot_dir{0};                            // encoder rotation direction
 
     /*uORB Subscriber*/
-    uORB::Subscription pwm_input_sub{ORB_ID(pwm_input)};
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
-    uORB::Publication<omni_modulation_cmd_s> _single_modulation_cmd_pub{ORB_ID(omni_modulation_cmd)};
+    uORB::Publication<omni_packet_cmd_s> _single_modu_packet_cmd_pub{ORB_ID(omni_packet_cmd)};
     uORB::Publication<omni_modulation_cmd_param_s> _single_modulation_cmd_param_pub{ORB_ID(omni_modulation_cmd_param)};
-    uORB::Publication<omni_pwm_cap_s> _single_pwm_input_cap_pub{ORB_ID(omni_pwm_cap)};
-    uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
+
+    // Performance (perf) counters
+    perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
+    perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": interval")};
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG

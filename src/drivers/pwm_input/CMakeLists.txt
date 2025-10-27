@@ -39,5 +39,5 @@ px4_add_module(
 	SRCS
 		pwm_input.cpp
 	DEPENDS
-		omniswashplateless
+		
 	)

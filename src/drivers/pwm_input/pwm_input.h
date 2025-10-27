@@ -39,7 +39,6 @@
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/pwm_input.h>
-#include "OmniSwashplateless.h"
 
 #if HRT_TIMER == PWMIN_TIMER
 #error cannot share timer between HRT and PWMIN
@@ -149,6 +148,5 @@ private:
 
 	uORB::PublicationData<pwm_input_s> _pwm_input_pub{ORB_ID(pwm_input)};
 
-	OmniSwashPlateLess _omniSwashPlateLess;
 
 };

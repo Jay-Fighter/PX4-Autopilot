@@ -663,3 +663,12 @@ unset VEHICLE_TYPE
 # Boot is complete, inform MAVLink app(s) that the system is now fully up and running.
 #
 mavlink boot_complete
+
+# # add by jay
+# Start omni_swashplateless automatically
+sleep 3
+omni_uart_io start
+sleep 3
+omni_swashplateless start
+
+# end

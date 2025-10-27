@@ -1,0 +1,5 @@
+menuconfig DRIVERS_OMNI_SWASHPLATELESS
+	bool "omni_swashplateless"
+	default y
+	---help---
+		Enable support for omni_swashplateless

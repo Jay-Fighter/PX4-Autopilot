@@ -42,7 +42,6 @@
 
 #include "DShotTelemetry.h"
 
-#include "OmniSwashplateless.h"
 
 using namespace time_literals;
 
@@ -185,5 +184,4 @@ private:
 		(ParamBool<px4::params::DSHOT_BIDIR_EN>) _param_bidirectional_enable
 	)
 
-	OmniSwashPlateLess _omniSwashPlateLess;
 };

@@ -30,7 +30,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-add_subdirectory(omniswashplateless)
 set(PARAM_PREFIX PWM_MAIN)
 
 if(CONFIG_BOARD_IO)
@@ -49,7 +48,6 @@ px4_add_module(
 		arch_io_pins
 		arch_dshot
 		mixer_module
-		omniswashplateless
 	MODULE_CONFIG
 		module.yaml
 	)

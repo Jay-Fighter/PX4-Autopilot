@@ -291,7 +291,7 @@ void LoggedTopics::add_debug_topics()
 	add_topic("actuator_test", 500);
 
 	//add by jay
-	add_topic("omni_modulation_cmd");
+	add_topic("omni_packet_cmd");
 	add_topic("omni_modulation_cmd_param");
 	add_topic("omni_pwm_cap");
 	add_topic("pwm_input");

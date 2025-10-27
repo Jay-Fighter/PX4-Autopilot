@@ -20,25 +20,29 @@
  *
  */
 
-// Serial Port Mapping see <https://docs.px4.io/main/en/flight_controller/nxp_mr_vmu_rt1176.html#serial-port-mapping>
+// Serial Port Mapping see <https://docs.px4.io/main/en/flight_controller/pixhawk4>
 // UART	Device	Port
-// UART1	/dev/ttyS0	Debug
-// UART3	/dev/ttyS1	GPS
-// UART4	/dev/ttyS2	TELEM1
-// UART5	/dev/ttyS3	GPS2
-// UART6	/dev/ttyS4	PX4IO
-// UART8	/dev/ttyS5	TELEM2
-// UART10	/dev/ttyS6	TELEM3
-// UART11	/dev/ttyS7	External
+// UART1	/dev/ttyS0	GPS
+// USART2	/dev/ttyS1	TELEM1 (flow control)
+// USART3	/dev/ttyS2	TELEM2 (flow control)
+// UART4	/dev/ttyS3	TELEM4
+// USART6	/dev/ttyS4	RC SBUS
+// UART7	/dev/ttyS5	Debug Console
+// UART8	/dev/ttyS6	PX4IO
 
 #include "omni_uart_io.hpp"
 #include <unistd.h>
+#include <cstring>
 #include "px4_platform_common/defines.h"
 
+constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
+constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
+
 OmniSerialInterface::OmniSerialInterface(const char* uart_device)
-    : ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(uart_device)) {}
+    : ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default) {}
 
 OmniSerialInterface::~OmniSerialInterface() {
+    DeinitSerial();
 
     ScheduleClear();
 }
@@ -46,15 +50,14 @@ OmniSerialInterface::~OmniSerialInterface() {
 void OmniSerialInterface::Run() {
 
     // Start the loop timer
-    // Increment our loop counter
     perf_begin(_loop_perf);
     perf_count(_loop_interval_perf);
 
     if (CheckForRx()) {
-        ReadAndSetRxBytes();
+        ProcessSerialRx();
+        ProcessSerialTx();
     }
 
-    // stop our timer
     perf_end(_loop_perf);
 }
 
@@ -62,8 +65,8 @@ bool OmniSerialInterface::init(const char* uart_device) {
 
     InitSerial(uart_device);
 
-//     ScheduleNow();
-    ScheduleOnInterval(20_ms); // 50 Hz
+    //     ScheduleNow();
+    ScheduleOnInterval(5_ms);  // 50 Hz
 
     return true;
 }
@@ -83,35 +86,20 @@ int OmniSerialInterface::InitSerial(const char* uart_device) {
     // store port name
     strncpy(_port_in_use, uart_device, sizeof(_port_in_use) - 1);
 
-    _uart_fd = ::open(_port_in_use, O_RDWR | O_NOCTTY);
+    ConfigureSerialPeripheral(_param_omni_uart_baud.get());
 
-    if (_uart_fd < 0) {
-        PX4_ERR("failed to open serial port: %s err: %d", uart_device, errno);
-        return -errno;
-    }
-
-    PX4_INFO("Opened serial port successfully");
-
-    // Now that we've opened the port, fully configure it for baud/bit num
-    return ConfigureSerialPeripheral(_param_omni_uart_baud.get());
+    return 0;
 }
 
 int OmniSerialInterface::ConfigureSerialPeripheral(unsigned baud) {
+    _uart_fd = ::open(_port_in_use, O_RDWR | O_NOCTTY);
+    if (_uart_fd < 0) {
+        PX4_ERR("failed to open serial port, err: %d", errno);
+        return -errno;
+    }
 
     int speed;
-
     switch (baud) {
-        case 9600:
-            speed = B9600;
-            break;
-
-        case 19200:
-            speed = B19200;
-            break;
-
-        case 38400:
-            speed = B38400;
-            break;
 
         case 57600:
             speed = B57600;
@@ -137,111 +125,253 @@ int OmniSerialInterface::ConfigureSerialPeripheral(unsigned baud) {
             speed = B921600;
             break;
 
-        case 1000000:
-            speed = B1000000;
-            break;
-
         default:
             return -EINVAL;
     }
 
-    struct termios uart_config;
-
-    int termios_state;
-
-    /* fill the struct for the new configuration */
-    tcgetattr(_uart_fd, &uart_config);
-
-    //
-    // Input flags - Turn off input processing
-    //
-    // convert break to null byte, no CR to NL translation,
-    // no NL to CR translation, don't mark parity errors or breaks
-    // no input parity check, don't strip high bit off,
-    // no XON/XOFF software flow control
-    //
-    uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
-    //
-    // Output flags - Turn off output processing
-    //
-    // no CR to NL translation, no NL to CR-NL translation,
-    // no NL to CR translation, no column 0 CR suppression,
-    // no Ctrl-D suppression, no fill characters, no case mapping,
-    // no local output processing
-    //
-    // config.c_oflag &= ~(OCRNL | ONLCR | ONLRET |
-    //                     ONOCR | ONOEOT| OFILL | OLCUC | OPOST);
-    uart_config.c_oflag = 0;
-
-    //
-    // No line processing
-    //
-    // echo off, echo newline off, canonical mode off,
-    // extended input processing off, signal chars off
-    //
-    uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
-
-    /* no parity, one stop bit, disable flow control */
-    uart_config.c_cflag &= ~(CSTOPB | PARENB | CRTSCTS);
-
-    /* set baud rate */
-    // Set the baud rate in the input direction (when receiving)
-    if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
-        return -errno;
-    }
-    // Set the baud rate in the output direction (when sending)
-    if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-        return -errno;
+    struct termios uart_config {};
+    if (tcgetattr(_uart_fd, &uart_config) != 0) {
+        PX4_ERR("tcgetattr failed (%d)", errno);
+        return -1;
     }
 
-    if ((termios_state = tcsetattr(_uart_fd, TCSANOW, &uart_config)) < 0) {
-        return -errno;
+    // 原始模式，不进行换行、回车或流控处理
+    cfmakeraw(&uart_config);
+
+    /* clear ONLCR flag (which appends a CR for every LF) */
+    uart_config.c_oflag &= ~ONLCR;  // 将NL转换成CR(回车)-NL后输出。
+
+    /* 无偶校验，一个停止位 */
+    uart_config.c_cflag &= ~(CSTOPB | PARENB);  // CSTOPB 使用两个停止位，PARENB 表示偶校验
+
+    // 设置波特率
+    cfsetispeed(&uart_config, speed);
+    cfsetospeed(&uart_config, speed);
+
+    // 非阻塞读取
+    uart_config.c_cc[VMIN] = 0;
+    uart_config.c_cc[VTIME] = 1;
+
+    if (tcsetattr(_uart_fd, TCSANOW, &uart_config) != 0) {
+        PX4_ERR("tcsetattr failed (%d)", errno);
+        return -1;
     }
 
     close(_uart_fd);
     _uart_fd = -1;
 
+    PX4_INFO("Serial port %s configured at %u baud", _port_in_use, baud);
     return 0;
 }
 
 bool OmniSerialInterface::CheckForRx() {
-    // Reopen serial
-    ReOpenSerial();
 
-    /*Copy the original byte stream*/
+    ReOpenSerial();
 
     // read from the uart. This must be non-blocking, so check first if there is data available
     _bytes_available = 0;
-    int ret = ioctl(_uart_fd, FIONREAD, (unsigned long)&_bytes_available);
+    int ret = ioctl(_uart_fd, FIONREAD, &_bytes_available);
 
     if (ret != 0) {
         PX4_ERR("Reading error");
         return -1;
     }
 
+    PX4_DEBUG("CheckForRx: available=%d bytes", (int)_bytes_available);
+
     return _bytes_available > 0;
 }
 
-uint8_t* OmniSerialInterface::ReadAndSetRxBytes() {
-    // Read the bytes available for us
-    read(_uart_fd, _rx_buf, _bytes_available);
+void OmniSerialInterface::ProcessSerialRx() {
 
-    // TODO 在这里进行解包
-    return _rx_buf;
+    // === 1. 从串口读取数据 ===
+    ssize_t bytes_read = ::read(_uart_fd, _rx_buf, _bytes_available);
+
+    if (bytes_read < FRAME_LEN) {
+        // perf_count(_comms_errors);
+        return;
+    };
+
+    // === 2. 查找起始标志 (0xABCD) ===
+    int start_index = -1;
+    for (ssize_t i = 0; i < bytes_read - 1; i++) {
+        if (_rx_buf[i] == FRAME_HEADER_1 && _rx_buf[i + 1] == FRAME_HEADER_2) {
+            start_index = i;
+            break;
+        }
+    }
+
+    if (start_index < 0) {
+        // perf_count(_comms_errors);
+        return;
+    }
+
+    // === 3. 校验长度是否足够 ===
+    if (bytes_read - start_index < FRAME_LEN) {
+        // perf_count(_comms_errors);
+        return;
+    }
+
+    const uint8_t* frame = &_rx_buf[start_index];
+
+    // === 4. 校验帧尾是否正确 (0x0D 0x0A) ===
+    if (frame[FRAME_LEN - 2] != FRAME_END_1 || frame[FRAME_LEN - 1] != FRAME_END_2) {
+        // PX4_WARN("Invalid frame tail: 0x%02X 0x%02X", frame[FRAME_LEN - 2], frame[FRAME_LEN - 1]);
+        // perf_count(_comms_errors);
+        return;
+    }
+
+    // === 5. 校验和验证 ===
+    uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN - 3);
+    uint8_t recv_sum = frame[FRAME_LEN - 3];
+
+    if (check_sum != recv_sum) {
+        // PX4_WARN("Checksum mismatch calc=0x%02X recv=0x%02X", check_sum, recv_sum);
+        // perf_count(_comms_errors);
+        return;
+    }
+
+    // === 6. 解析字段 ===
+    uint8_t motor_index = frame[2];
+    float motor_pos = bytesToFloat(&frame[3]);
+    float motor_vel = bytesToFloat(&frame[7]);
+    uint32_t ua = bytesToUint32(&frame[11]);
+    uint32_t us = bytesToUint32(&frame[15]);
+    uint32_t u = bytesToUint32(&frame[19]);
+
+    _motor_telemetry.index = motor_index;
+    _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
+    _motor_telemetry.obs_angle_rad = motor_pos;
+    _motor_telemetry.obs_rpm = motor_vel;
+    _motor_telemetry.throttle_ua = ua;
+    _motor_telemetry.throttle_us = us;
+    _motor_telemetry.throttle_u = u;
+    _motor_telemetry.timestamp = hrt_absolute_time();
+
+    _motor_telemetry_pub.publish(_motor_telemetry);
+
+    // === 打印完整帧数据（十六进制） ===
+    //     PX4_INFO_RAW(" [ProcessSerialRx]: Received full frame (%d bytes): ", FRAME_LEN);
+    //     for (int i = 0; i < FRAME_LEN; i++) {
+    //         PX4_INFO_RAW("%02X ", frame[i]);
+    //     }
+    //     PX4_INFO_RAW("\n");
+    //     // === 打印调试信息 ===
+    //     PX4_INFO("[ProcessSerialRx]: Telemetry: idx=%d, rad=%.3f, deg=%.3f, rpm=%.3f, ua=%.3f, us=%.3f, u=%.3f, t=%llu", _motor_telemetry.index,
+    //              (double)_motor_telemetry.obs_angle_rad, (double)_motor_telemetry.obs_angle_deg, (double)_motor_telemetry.obs_rpm,
+    //              (double)_motor_telemetry.throttle_ua, (double)_motor_telemetry.throttle_us, (double)_motor_telemetry.throttle_u,
+    //              (unsigned long long)_motor_telemetry.timestamp);
+
+    return;
+}
+
+float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
+    uint8_t b[4] = {bytes[3], bytes[2], bytes[1], bytes[0]};
+    float val;
+    std::memcpy(&val, b, sizeof(float));
+    return val;
+}
+
+uint32_t OmniSerialInterface::bytesToUint32(const uint8_t* bytes) {
+    return (uint32_t(bytes[0]) << 24) | (uint32_t(bytes[1]) << 16) | (uint32_t(bytes[2]) << 8) | (uint32_t(bytes[3]));
 }
 
 void OmniSerialInterface::ProcessSerialTx() {
-    // Reopen serial
+
     ReOpenSerial();
 
-    // TODO 在这里进行打包 调用write进行下发
+    if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
+
+        uint8_t frame_[FRAME_LEN + 10];
+        uint8_t frame_len_ = 0;
+        packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
+        int ret = 0;
+        ret = ::write(_uart_fd, &frame_[0], frame_len_);
+        // PX4_INFO("Wrote %d bytes to serial", frame_len_);
+        if (ret != frame_len_) {
+            perf_count(_comms_errors);
+            PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+            // Flush data written, not transmitted
+            tcflush(_uart_fd, TCOFLUSH);
+        }
+    }
 }
 
-void OmniSerialInterface::print_info() {}
+uint8_t OmniSerialInterface::calcChecksum(const uint8_t* data, size_t len) {
+    uint32_t sum = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        sum += data[i];
+    }
+
+    return static_cast<uint8_t>(sum & 0xFF);
+}
+
+void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8_t* frame, uint8_t& frame_len) {
+
+    // frame header
+    frame[frame_len++] = FRAME_HEADER_1;
+    frame[frame_len++] = FRAME_HEADER_2;
+
+    // motor index
+    frame[frame_len++] = packet.index;
+
+    // throttle ua
+    uint8_t ua[4];
+    memcpy(ua, &packet.throttle_ua, sizeof(float));
+    frame[frame_len++] = ua[3];
+    frame[frame_len++] = ua[2];
+    frame[frame_len++] = ua[1];
+    frame[frame_len++] = ua[0];
+
+    // throttle us
+    uint8_t us[4];
+    memcpy(us, &packet.throttle_us, sizeof(float));
+    frame[frame_len++] = us[3];
+    frame[frame_len++] = us[2];
+    frame[frame_len++] = us[1];
+    frame[frame_len++] = us[0];
+
+    // === 正弦油门相位 (float32, 高位在前) ===
+    uint8_t phase_bytes[4];
+    memcpy(phase_bytes, &packet.throttle_ctrls_phase, sizeof(float));
+    frame[frame_len++] = phase_bytes[3];
+    frame[frame_len++] = phase_bytes[2];
+    frame[frame_len++] = phase_bytes[1];
+    frame[frame_len++] = phase_bytes[0];
+
+    // === 相位滞后角度 (float32, 高位在前) ===
+    uint8_t lag_angle_bytes[4];
+    memcpy(lag_angle_bytes, &packet.throttle_ctrls_lag_angle, sizeof(float));
+    frame[frame_len++] = lag_angle_bytes[3];
+    frame[frame_len++] = lag_angle_bytes[2];
+    frame[frame_len++] = lag_angle_bytes[1];
+    frame[frame_len++] = lag_angle_bytes[0];
+
+    uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN - 3);
+    frame[frame_len++] = check_sum;
+
+    // === 帧尾 ===
+    frame[frame_len++] = FRAME_END_1;  // 0x0D
+    frame[frame_len++] = FRAME_END_2;  // 0x0A
+
+    //     === 打印调试信息 ===
+    //     PX4_INFO_RAW("[ProcessSerialTx]: Packed Throttle Frame (%zu bytes): ", frame_len);
+    //     for (size_t i = 0; i < frame_len; i++) {
+    //         PX4_INFO_RAW("%02X ", frame[i]);
+    //     }
+    //     PX4_INFO_RAW("\n");
+}
+
+void OmniSerialInterface::print_info() {
+    perf_print_counter(_loop_perf);
+    perf_print_counter(_loop_interval_perf);
+}
 
 void OmniSerialInterface::ReOpenSerial() {
+
     if (_uart_fd < 0) {
-        _uart_fd = open(_port_in_use, O_RDWR | O_NOCTTY);
+        _uart_fd = open(_port_in_use, O_RDWR | O_NOCTTY | O_NONBLOCK);
     }
 }
 
@@ -299,7 +429,6 @@ int stop() {
         delete g_dev;
         g_dev = nullptr;
         PX4_INFO("driver stopped");
-
     } else {
         PX4_ERR("driver not running");
         return 1;
@@ -319,51 +448,25 @@ int usage() {
 }
 
 }  // namespace omni_uart_namespace
-
-extern "C" __EXPORT int omni_uart_interface_main(int argc, char* argv[]) {
-    int ch = 0;
-    const char* device_path = nullptr;
-    int myoptind = 1;
-    const char* myoptarg = nullptr;
-
-    while ((ch = px4_getopt(argc, argv, "d:", &myoptind, &myoptarg)) != EOF) {
-        switch (ch) {
-
-            case 'd':
-                device_path = myoptarg;
-                break;
-
-            default:
-                PX4_WARN("Unknown option!");
-                return PX4_ERROR;
-        }
-    }
-
-    if (myoptind >= argc) {
-        PX4_ERR("unrecognized command");
-        return omni_uart_namespace::usage();
-    }
-
-    if (!device_path) {
-        PX4_ERR("Missing device");
+extern "C" __EXPORT int omni_uart_io_main(int argc, char* argv[]) {
+    if (argc < 2) {
+        PX4_WARN("Usage: omni_uart_interface {start|stop|status}");
         return PX4_ERROR;
     }
 
-    if (!strcmp(argv[myoptind], "start")) {
-        if (strcmp(device_path, "") != 0) {
-            return omni_uart_namespace::start(device_path);
+    const char* device_path = "/dev/ttyS3";
 
-        } else {
-            PX4_WARN("Please specify device path!");
-            return omni_uart_namespace::usage();
-        }
+    if (!strcmp(argv[1], "start")) {
+        PX4_INFO("Starting omni_uart_interface on %s", device_path);
+        return omni_uart_namespace::start(device_path);
 
-    } else if (!strcmp(argv[myoptind], "stop")) {
+    } else if (!strcmp(argv[1], "stop")) {
         return omni_uart_namespace::stop();
 
-    } else if (!strcmp(argv[myoptind], "status")) {
+    } else if (!strcmp(argv[1], "status")) {
         return omni_uart_namespace::status();
     }
 
-    return omni_uart_namespace::usage();
+    PX4_WARN("Unrecognized command: %s", argv[1]);
+    return PX4_ERROR;
 }

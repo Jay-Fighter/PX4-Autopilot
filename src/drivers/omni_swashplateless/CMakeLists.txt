@@ -31,8 +31,16 @@
 #
 ############################################################################
 
-px4_add_library(omniswashplateless
-		OmniSwashplateless.cpp
-		)
-target_compile_options(omniswashplateless PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
-target_include_directories(omniswashplateless PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+px4_add_module(
+	MODULE drivers__omniswashplateless
+        MAIN omni_swashplateless
+    	COMPILE_FLAGS
+        -Os
+    	SRCS
+	    OmniSwashplateless.cpp
+
+    	DEPENDS
+	    px4_work_queue
+	MODULE_CONFIG
+	    module.yaml
+)

@@ -188,8 +188,6 @@ PWMIN::print_status()
 		 static_cast<unsigned>(_last_period),
 		 static_cast<unsigned>(_last_width));
 		 	// bool flag = true;
-	// uint16_t val = _omniSwashPlateLess.speedCtrl4Dshot(flag);
-	// PX4_INFO("OmniSwashPlateLess speedCtrl4Dshot: %u", val);
 	return 0;
 }
 

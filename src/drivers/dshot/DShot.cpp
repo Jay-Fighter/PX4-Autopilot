@@ -464,18 +464,10 @@ bool DShot::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 
 	} else {
 		int telemetry_index = 0;
-		//add by jay
-		uint16_t speed_val;
-		speed_val = _omniSwashPlateLess.speedCtrl4Dshot(_outputs_on);
-		//end
 
 		for (int i = 0; i < (int)num_outputs; i++) {
 
 			uint16_t output = outputs[i];
-
-			//add by jay
-			if (i == 0) output = speed_val;
-			//end
 
 			if (output == DSHOT_DISARM_VALUE) {
 				up_dshot_motor_command(i, DShot_cmd_motor_stop, telemetry_index == requested_telemetry_index);

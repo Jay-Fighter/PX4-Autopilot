@@ -11,91 +11,48 @@
 constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
 constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
 
-OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr) {
+OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default) {
     _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
     _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
     _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
 
-    _pwm_input_cap.max_pulse_width = SENSOR_PWM_MAX;
-    _pwm_input_cap.min_pulse_width = SENSOR_PWM_MIN;
     _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
 }
 
-void OmniSwashPlateLess::mortorStateEstimate() {
-    // copy data
-    _pwm_input_cap.last_pulse_width = _pwm_input_cap.pulse_width;
-    _pwm_input_cap.pulse_width = pwm_input_cap_data.pulse_width;
-    _pwm_input_cap.period = pwm_input_cap_data.period;
-    _pwm_input_cap.timestamp = pwm_input_cap_data.timestamp;
-    _pwm_input_cap.dt = static_cast<float>(_pwm_input_cap.timestamp - _pwm_input_cap.last_timestamp) / 1000000.0f;  // us to s
-    _pwm_input_cap.last_timestamp = _pwm_input_cap.timestamp;
-
-    // cal motor angle and velocity based the PWM captured
-    _motor_telemetry.obs_angle_rad_last = _motor_telemetry.obs_angle_rad;
-    _motor_telemetry.obs_angle_deg_last = _motor_telemetry.obs_angle_deg;
-
-    _motor_telemetry.obs_angle_rad = motorAngleCal(_pwm_input_cap);
-    _motor_telemetry.obs_angle_deg = _motor_telemetry.obs_angle_rad * RAD_2_DEG;
-
-    _motor_telemetry.obs_rpm = motorVelocityCal(_pwm_input_cap);
-
-    _motor_telemetry.timestamp = hrt_absolute_time();
-
-    _motor_telemetry_pub.publish(_motor_telemetry);
-    _single_pwm_input_cap_pub.publish(_pwm_input_cap);
-
-    _single_modu_cmd.pulse_angle_rad = _motor_telemetry.obs_angle_rad;
+OmniSwashPlateLess::~OmniSwashPlateLess() {
+    // Be inactive
+    ScheduleClear();
+    // Free our counters/timers
+    perf_free(_loop_perf);
+    perf_free(_loop_interval_perf);
 }
 
-float OmniSwashPlateLess::motorAngleCal(omni_pwm_cap_s& pwm_input_cap) {
+bool OmniSwashPlateLess::init() {
 
-    // calculate the pulse range
-    pwm_input_cap.pulse_width_range = abs(pwm_input_cap.max_pulse_width - pwm_input_cap.min_pulse_width);
+    // execute Run() on every sensor_accel publication //TODO:将调度挂载为回调触发
+    //     if (!_sensor_accel_sub.registerCallback()) {
+    //         PX4_ERR("callback registration failed");
+    //         return false;
+    //     }
 
-    // calculate the motor angle
-    // 归一化 [0,1]
-    float norm = (float(pwm_input_cap.pulse_width - pwm_input_cap.min_pulse_width) / float(pwm_input_cap.pulse_width_range));
-    norm = math::constrain(norm, 0.0f, 1.0f);
-
-    // 根据方向算角度
-    float rotor_angle;
-    if (_encoder_rot_dir == 0) {
-        rotor_angle = norm * 360.0f;
-    } else {
-        rotor_angle = (1.0f - norm) * 360.0f;
-    }
-
-    // add the angle bias
-    rotor_angle -= _motor_zero_bias * RAD_2_DEG;
-
-    // remap to 0~360 deg
-    if (rotor_angle < 0)
-        rotor_angle += 360;
-
-    return rotor_angle * DEG_2_RAD;
+    // alternatively, Run on fixed interval
+    ScheduleOnInterval(5000_us);  // 2000 us interval, 200 Hz rate
+    return true;
 }
 
-float OmniSwashPlateLess::motorVelocityCal(omni_pwm_cap_s& pwm_input_cap) {
-    float motor_velocity = 0.0f;
-    float delta_angle = _motor_telemetry.obs_angle_rad - _motor_telemetry.obs_angle_rad_last;
-
-    if (delta_angle > M_PI_F) {
-        delta_angle -= 2.0f * M_PI_F;  // 例如 1° → 359°
-    } else if (delta_angle < -M_PI_F) {
-        delta_angle += 2.0f * M_PI_F;  // 例如 359° → 1°
+void OmniSwashPlateLess::Run() {
+    if (should_exit()) {
+        ScheduleClear();
+        exit_and_cleanup();
+        return;
     }
 
-    if (pwm_input_cap.dt > 1e-6f) {
-        motor_velocity = delta_angle / pwm_input_cap.dt;
-    }
+    perf_begin(_loop_perf);
+    perf_count(_loop_interval_perf);
 
-    float rpm_instant = motor_velocity * 60.0f / (2.0f * M_PI_F);  // to rpm
+    modulationCmdCal();
 
-    static float rpm_filtered = 0.0f;
-    const float alpha = 0.2f;  // Filter coefficient
-    rpm_filtered = rpm_filtered + alpha * (rpm_instant - rpm_filtered);
-
-    return rpm_filtered;
+    perf_end(_loop_perf);
 }
 
 void OmniSwashPlateLess::modulationCmdCal() {
@@ -104,57 +61,38 @@ void OmniSwashPlateLess::modulationCmdCal() {
 
     float ua_temp = _single_modu_cmd_param.actuator_ctrls_ua_qgc * ACTUATOR_CONTROLS_TO_DSHOT;
     ua_temp = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
-    _single_modu_cmd.actuator_ctrls_ua = ua_temp;
+    _single_modu_packet_cmd.throttle_ua = ua_temp;
 
     // for debug: The amplitude of the sine is a percentage of the throttle
-    _single_modu_cmd.actuator_ctrls_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * ua_temp;
+    _single_modu_packet_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * ua_temp;
 
-    _single_modu_cmd.actuator_ctrls_pha = _single_modu_cmd_param.actuator_ctrls_pha_qgc;
+    _single_modu_packet_cmd.index = 0;  // TODO:确定索引
+    _single_modu_packet_cmd.throttle_ctrls_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc;
+    _single_modu_packet_cmd.throttle_ctrls_lag_angle = _single_modu_cmd_param.motor_lag_angle_qgc;
 
-    mix_throttle();
+    publish_throttle();
 #endif
+
+    // TODO:另一个调制指令则通过姿态环的控制输出来计算，平均升力，相位角
 }
 
-void OmniSwashPlateLess::mix_throttle() {
-    float throttle_margin = THROTTLE_MAX - _single_modu_cmd.actuator_ctrls_ua;
+void OmniSwashPlateLess::publish_throttle() {
+    float throttle_margin = THROTTLE_MAX - _single_modu_packet_cmd.throttle_ua;
 
-    // limnit the sin amp based on the throttle margin
-    if (_single_modu_cmd.actuator_ctrls_us > _single_modu_cmd.actuator_ctrls_ua) {
-        _single_modu_cmd.actuator_ctrls_us = _single_modu_cmd.actuator_ctrls_ua;
+    // limit the sin amp based on the throttle margin
+    if (_single_modu_packet_cmd.throttle_us > _single_modu_packet_cmd.throttle_ua) {
+        _single_modu_packet_cmd.throttle_us = _single_modu_packet_cmd.throttle_ua;
     }
-    if (_single_modu_cmd.actuator_ctrls_us > throttle_margin) {
-        _single_modu_cmd.actuator_ctrls_us = throttle_margin;
+    if (_single_modu_packet_cmd.throttle_us > throttle_margin) {
+        _single_modu_packet_cmd.throttle_us = throttle_margin;
     }
 
-    _single_modu_cmd.actuator_ctrls_us = math::constrain(_single_modu_cmd.actuator_ctrls_us, 0.0f, static_cast<float>(THROTTLE_SIN_AMP_LIMIT));
+    _single_modu_packet_cmd.throttle_us = math::constrain(_single_modu_packet_cmd.throttle_us, 0.0f, static_cast<float>(THROTTLE_SIN_AMP_LIMIT));
 
-    // calculate the throttle value for dshot
-    float throttle_dc = _single_modu_cmd.actuator_ctrls_ua;  // DC component of the throttle
-
-    float throttle_sin = _single_modu_cmd.actuator_ctrls_us * cosf(_single_modu_cmd.pulse_angle_rad - _single_modu_cmd.actuator_ctrls_pha -
-                                                                   _motor_delay_angle_bias_rad);  // Sine component of the throttle
-
-    _single_modu_cmd.throttle = static_cast<uint16_t>(throttle_dc + throttle_sin);
-    _single_modu_cmd.throttle = constrain(_single_modu_cmd.throttle, DSHOT_THROTTLE_MIN, DSHOT_THROTTLE_MAX);
-    _single_modu_cmd.throttle_dc = throttle_dc;
-    _single_modu_cmd.throttle_ac = throttle_sin;
-    _single_modu_cmd.timestamp = hrt_absolute_time();
+    _single_modu_packet_cmd.timestamp = hrt_absolute_time();
 
     // publish for logging
-    _single_modulation_cmd_pub.publish(_single_modu_cmd);
-}
-
-uint16_t OmniSwashPlateLess::speedCtrl4Dshot(bool on_flag) {
-
-    if (pwm_input_sub.update(&pwm_input_cap_data)) {
-        // motor state estimate based on PWM input
-        mortorStateEstimate();
-
-        modulationCmdCal();
-    }
-
-    uint16_t throttle_2_dshot = _single_modu_cmd.throttle;
-    return throttle_2_dshot;
+    _single_modu_packet_cmd_pub.publish(_single_modu_packet_cmd);
 }
 
 void OmniSwashPlateLess::update_test_params() {
@@ -169,7 +107,7 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
-        _single_modu_cmd_param.motor_lag_angle_deg_qgc = _param_motor_delay_angle_bias.get();
+        _single_modu_cmd_param.motor_lag_angle_qgc = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
         // get motor zero bias param
@@ -177,9 +115,6 @@ void OmniSwashPlateLess::update_test_params() {
 
         // get encoder rot dir param
         _encoder_rot_dir = _param_encoder_rot_dir.get();
-
-        // get motor delay angle bias
-        _motor_delay_angle_bias_rad = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
 
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
@@ -298,4 +233,59 @@ void OmniSwashPlateLess::update_test_params() {
 
     // publish
     _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
+}
+
+int OmniSwashPlateLess::task_spawn(int argc, char* argv[]) {
+    OmniSwashPlateLess* instance = new OmniSwashPlateLess();
+
+    if (instance) {
+        _object.store(instance);
+        _task_id = task_id_is_work_queue;
+
+        if (instance->init()) {
+            return PX4_OK;
+        }
+
+    } else {
+        PX4_ERR("alloc failed");
+    }
+
+    delete instance;
+    _object.store(nullptr);
+    _task_id = -1;
+
+    return PX4_ERROR;
+}
+
+int OmniSwashPlateLess::custom_command(int argc, char* argv[]) {
+    return print_usage("unknown command");
+}
+
+int OmniSwashPlateLess::print_usage(const char* reason) {
+    if (reason) {
+        PX4_WARN("%s\n", reason);
+    }
+
+    PRINT_MODULE_DESCRIPTION(
+        R"DESCR_STR(
+### Description
+Example of a omniswashplateless module running out of a work queue.
+
+)DESCR_STR");
+
+    PRINT_MODULE_USAGE_NAME("omni_swashplateless", "drivers/dshot");
+    PRINT_MODULE_USAGE_COMMAND("start");
+    PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+
+    return 0;
+}
+
+int OmniSwashPlateLess::print_status() {
+    perf_print_counter(_loop_perf);
+    perf_print_counter(_loop_interval_perf);
+    return 0;
+}
+
+extern "C" __EXPORT int omni_swashplateless_main(int argc, char* argv[]) {
+    return OmniSwashPlateLess::main(argc, argv);
 }

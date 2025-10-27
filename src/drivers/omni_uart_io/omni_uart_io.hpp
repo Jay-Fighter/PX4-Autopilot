@@ -34,6 +34,21 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/Publication.hpp>
+
+#include <uORB/topics/omni_motor_telemetry.h>
+#include <uORB/topics/omni_packet_cmd.h>
+
+#include <containers/Array.hpp>
+
+// Frame packet definition
+#define FRAME_HEADER_1 0xAB
+#define FRAME_HEADER_2 0xCD
+#define FRAME_END_1 0x0D
+#define FRAME_END_2 0x0A
+
+const ssize_t FRAME_LEN = 26;  // 2+1+4+4+4+4+4+1+2
 
 using namespace time_literals;
 
@@ -76,12 +91,26 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
      *
      * @return uint8_t* A pointer to the start of the packet
      */
-    uint8_t* ReadAndSetRxBytes();
+    void ProcessSerialRx();
+
+    float bytesToFloat(const uint8_t* bytes);
+
+    uint32_t bytesToUint32(const uint8_t* bytes);
 
     /**
      * @brief check to see if there is any data that we need to transmit over serial
      */
     void ProcessSerialTx();
+
+    /**
+     * @brief Calculate the checksum for a given packet
+     */
+    uint8_t calcChecksum(const uint8_t* data, size_t len);
+
+    /**
+     * @brief Pack a throttle command packet
+     */
+    void packThrottleCmd(const omni_packet_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
 
     void print_info();
 
@@ -90,6 +119,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
    private:
     char _port_in_use[20]{};
     uint8_t _bytes_available;
+
     // Buffers for data to transmit or that we're receiving
     uint8_t _rx_buf[256];
     uint8_t _tx_buf[256];
@@ -97,8 +127,18 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
     // The port that we're using for communication
     int _uart_fd{-1};
 
+    omni_packet_cmd_s _single_modu_packet_cmd{0};
+    omni_motor_telemetry_s _motor_telemetry{0};
+
+    /*uORB Subscriber*/
+    uORB::Subscription _single_modu_packet_cmd_sub{ORB_ID(omni_packet_cmd)};
+
+    /*uORB Publisher*/
+    uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
+
     perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
     perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};
+    perf_counter_t _comms_errors;  //统计某类事件的发生次数
 
     // QGC param
     DEFINE_PARAMETERS(

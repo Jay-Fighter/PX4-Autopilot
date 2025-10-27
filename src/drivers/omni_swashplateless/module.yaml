@@ -1,0 +1,60 @@
+
+module_name: Omni Swashplateless
+
+parameters:
+    #add by jay
+    - group: Omni Swashplateless
+      definitions:
+        OMNI_UA:
+            description:
+                short: Module Param - Average velocity for swashplatess mechanism
+                long: |
+                    DC component u_a, i.e. baseline setpoint velocity (unit: RPM)
+            type: float
+            default: 0
+            min: 0.0
+            max: 1.0
+        OMNI_US:
+            description:
+                short: Module Param - Sinusoidal velocity amplitude
+                long: |
+                    Amplitude u_s of the sinusoidal modulation added to the baseline velocity (unit: RPM)
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 1.0
+        OMNI_PHASE:
+            description:
+                short: Module Param - Sinusoidal phase offset
+                long: |
+                      Phase shift \alpha for the sinusoidal term sin(φ – \alpha) (unit: deg)
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 360.0
+        MOTOR_ZERO_BIAS:
+            description:
+                short: Module Param - The angle between the positive blade and the y-axis of the body is zero degree position (unit:deg)
+                long: |
+                      Set it to 0 first and read the angle value as the bias value
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 360.0
+        ENCODER_ROT_DIR:
+            description:
+                short: Module Param - The direction of rotation of the encoder
+                long: |
+                      clockwise 0 and counterclockwise 1(Reverse the incremental direction of the encoder)
+            type: int32
+            default: 0
+            min: 0
+            max: 1
+        MOTOR_DELAY_BIAS:
+            description:
+                short: Module Param - Propeller lag angle (unit:deg)
+            type: float
+            default: 0.0
+            min: 0.0
+            max: 360.0
+    #end add by jay
