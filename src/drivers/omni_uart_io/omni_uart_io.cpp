@@ -55,9 +55,9 @@ void OmniSerialInterface::Run() {
 
     if (CheckForRx()) {
         ProcessSerialRx();
-        ProcessSerialTx();
+        // ProcessSerialTx();
     }
-
+    ProcessSerialTx();
     perf_end(_loop_perf);
 }
 
@@ -177,7 +177,7 @@ bool OmniSerialInterface::CheckForRx() {
         return -1;
     }
 
-    PX4_DEBUG("CheckForRx: available=%d bytes", (int)_bytes_available);
+    //     PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
 
     return _bytes_available > 0;
 }
@@ -243,9 +243,9 @@ void OmniSerialInterface::ProcessSerialRx() {
     _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
     _motor_telemetry.obs_angle_rad = motor_pos;
     _motor_telemetry.obs_rpm = motor_vel;
-    _motor_telemetry.throttle_ua = ua;
-    _motor_telemetry.throttle_us = us;
-    _motor_telemetry.throttle_u = u;
+    _motor_telemetry.throttle_ua = (float)ua;
+    _motor_telemetry.throttle_us = (float)us;
+    _motor_telemetry.throttle_u = (float)u;
     _motor_telemetry.timestamp = hrt_absolute_time();
 
     _motor_telemetry_pub.publish(_motor_telemetry);
