@@ -36,7 +36,7 @@ bool OmniSwashPlateLess::init() {
     //     }
 
     // alternatively, Run on fixed interval
-    ScheduleOnInterval(5000_us);  // 2000 us interval, 200 Hz rate
+    ScheduleOnInterval(5_ms);  // 2000 us interval, 200 Hz rate
     return true;
 }
 
@@ -205,6 +205,7 @@ void OmniSwashPlateLess::update_test_params() {
     /*Test4: Fixed us, us increment with smooth ramp*/
 
 #elif OMNI_TEST_MODE_SELECTED == 4
+    /*Test4: 先给定ua，1s后再叠加上us*/
     static hrt_abstime _last_increment_time = 0;
     static float last_ua_param = NAN;
 

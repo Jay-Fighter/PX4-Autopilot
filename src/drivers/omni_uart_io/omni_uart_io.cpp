@@ -166,7 +166,7 @@ int OmniSerialInterface::ConfigureSerialPeripheral(unsigned baud) {
 
 bool OmniSerialInterface::CheckForRx() {
 
-    ReOpenSerial();
+    //     ReOpenSerial();
 
     // read from the uart. This must be non-blocking, so check first if there is data available
     _bytes_available = 0;
@@ -177,7 +177,7 @@ bool OmniSerialInterface::CheckForRx() {
         return -1;
     }
 
-    //     PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
+    PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
 
     return _bytes_available > 0;
 }
@@ -187,7 +187,7 @@ void OmniSerialInterface::ProcessSerialRx() {
     // === 1. 从串口读取数据 ===
     ssize_t bytes_read = ::read(_uart_fd, _rx_buf, _bytes_available);
 
-    if (bytes_read < FRAME_LEN) {
+    if (bytes_read < FRAME_LEN_RX) {
         // perf_count(_comms_errors);
         return;
     };
@@ -207,7 +207,7 @@ void OmniSerialInterface::ProcessSerialRx() {
     }
 
     // === 3. 校验长度是否足够 ===
-    if (bytes_read - start_index < FRAME_LEN) {
+    if (bytes_read - start_index < FRAME_LEN_RX) {
         // perf_count(_comms_errors);
         return;
     }
@@ -215,15 +215,15 @@ void OmniSerialInterface::ProcessSerialRx() {
     const uint8_t* frame = &_rx_buf[start_index];
 
     // === 4. 校验帧尾是否正确 (0x0D 0x0A) ===
-    if (frame[FRAME_LEN - 2] != FRAME_END_1 || frame[FRAME_LEN - 1] != FRAME_END_2) {
-        // PX4_WARN("Invalid frame tail: 0x%02X 0x%02X", frame[FRAME_LEN - 2], frame[FRAME_LEN - 1]);
+    if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
+        // PX4_WARN("Invalid frame tail: 0x%02X 0x%02X", frame[FRAME_LEN_RX - 2], frame[FRAME_LEN_RX - 1]);
         // perf_count(_comms_errors);
         return;
     }
 
     // === 5. 校验和验证 ===
-    uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN - 3);
-    uint8_t recv_sum = frame[FRAME_LEN - 3];
+    uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_RX - 3);
+    uint8_t recv_sum = frame[FRAME_LEN_RX - 3];
 
     if (check_sum != recv_sum) {
         // PX4_WARN("Checksum mismatch calc=0x%02X recv=0x%02X", check_sum, recv_sum);
@@ -235,9 +235,9 @@ void OmniSerialInterface::ProcessSerialRx() {
     uint8_t motor_index = frame[2];
     float motor_pos = bytesToFloat(&frame[3]);
     float motor_vel = bytesToFloat(&frame[7]);
-    uint32_t ua = bytesToUint32(&frame[11]);
-    uint32_t us = bytesToUint32(&frame[15]);
-    uint32_t u = bytesToUint32(&frame[19]);
+    uint32_t ua = bytesToUint16(&frame[11]);
+    uint32_t us = bytesToUint16(&frame[13]);
+    uint32_t u = bytesToUint16(&frame[15]);
 
     _motor_telemetry.index = motor_index;
     _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
@@ -251,8 +251,8 @@ void OmniSerialInterface::ProcessSerialRx() {
     _motor_telemetry_pub.publish(_motor_telemetry);
 
     // === 打印完整帧数据（十六进制） ===
-    //     PX4_INFO_RAW(" [ProcessSerialRx]: Received full frame (%d bytes): ", FRAME_LEN);
-    //     for (int i = 0; i < FRAME_LEN; i++) {
+    //     PX4_INFO_RAW(" [ProcessSerialRx]: Received full frame (%d bytes): ", FRAME_LEN_RX);
+    //     for (int i = 0; i < FRAME_LEN_RX; i++) {
     //         PX4_INFO_RAW("%02X ", frame[i]);
     //     }
     //     PX4_INFO_RAW("\n");
@@ -272,8 +272,8 @@ float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
     return val;
 }
 
-uint32_t OmniSerialInterface::bytesToUint32(const uint8_t* bytes) {
-    return (uint32_t(bytes[0]) << 24) | (uint32_t(bytes[1]) << 16) | (uint32_t(bytes[2]) << 8) | (uint32_t(bytes[3]));
+uint32_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
+    return (uint32_t(bytes[2]) << 8) | (uint32_t(bytes[3]));
 }
 
 void OmniSerialInterface::ProcessSerialTx() {
@@ -282,12 +282,13 @@ void OmniSerialInterface::ProcessSerialTx() {
 
     if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
 
-        uint8_t frame_[FRAME_LEN + 10];
+        uint8_t frame_[FRAME_LEN_TX];
         uint8_t frame_len_ = 0;
         packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
         int ret = 0;
-        ret = ::write(_uart_fd, &frame_[0], frame_len_);
-        // PX4_INFO("Wrote %d bytes to serial", frame_len_);
+
+        ret = ::write(_uart_fd, frame_, frame_len_);
+
         if (ret != frame_len_) {
             perf_count(_comms_errors);
             PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
@@ -317,22 +318,15 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     frame[frame_len++] = packet.index;
 
     // throttle ua
-    uint8_t ua[4];
-    memcpy(ua, &packet.throttle_ua, sizeof(float));
-    frame[frame_len++] = ua[3];
-    frame[frame_len++] = ua[2];
-    frame[frame_len++] = ua[1];
-    frame[frame_len++] = ua[0];
+    uint16_t ua_val = static_cast<uint32_t>(packet.throttle_ua);
+    frame[frame_len++] = (ua_val >> 8) & 0xFF;
+    frame[frame_len++] = ua_val & 0xFF;
+
+    uint16_t us_val = static_cast<uint32_t>(packet.throttle_us);  // ← 注意这里是 throttle_us
+    frame[frame_len++] = (us_val >> 8) & 0xFF;
+    frame[frame_len++] = us_val & 0xFF;
 
     // throttle us
-    uint8_t us[4];
-    memcpy(us, &packet.throttle_us, sizeof(float));
-    frame[frame_len++] = us[3];
-    frame[frame_len++] = us[2];
-    frame[frame_len++] = us[1];
-    frame[frame_len++] = us[0];
-
-    // === 正弦油门相位 (float32, 高位在前) ===
     uint8_t phase_bytes[4];
     memcpy(phase_bytes, &packet.throttle_ctrls_phase, sizeof(float));
     frame[frame_len++] = phase_bytes[3];
@@ -348,7 +342,7 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     frame[frame_len++] = lag_angle_bytes[1];
     frame[frame_len++] = lag_angle_bytes[0];
 
-    uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN - 3);
+    uint8_t check_sum = calcChecksum(&frame[0], frame_len);
     frame[frame_len++] = check_sum;
 
     // === 帧尾 ===

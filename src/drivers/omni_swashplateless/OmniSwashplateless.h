@@ -23,7 +23,7 @@
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_MODE_SELECTED 4
+#define OMNI_TEST_MODE_SELECTED 5
 
 #define SENSOR_PWM_MAX (8200)
 #define SENSOR_PWM_MIN (24)

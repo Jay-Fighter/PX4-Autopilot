@@ -48,7 +48,8 @@
 #define FRAME_END_1 0x0D
 #define FRAME_END_2 0x0A
 
-const ssize_t FRAME_LEN = 26;  // 2+1+4+4+4+4+4+1+2
+const ssize_t FRAME_LEN_RX = 20;  // 2+1+4+4+2+2+2+1+2
+const ssize_t FRAME_LEN_TX = 18;  // 2+1+2+2+4+4+1+2
 
 using namespace time_literals;
 
@@ -95,7 +96,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
     float bytesToFloat(const uint8_t* bytes);
 
-    uint32_t bytesToUint32(const uint8_t* bytes);
+    uint32_t bytesToUint16(const uint8_t* bytes);
 
     /**
      * @brief check to see if there is any data that we need to transmit over serial
