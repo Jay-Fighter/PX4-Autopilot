@@ -279,10 +279,6 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 	case MAVLINK_MSG_ID_OPEN_DRONE_ID_SYSTEM:
 		handle_message_open_drone_id_system(msg);
 		break;
-		
-	case MAVLINK_MSG_ID_WRENCH_SENSOR_PUB:
-		handle_message_wrench_sensor_pub(msg);
-		break;
 
 #if !defined(CONSTRAINED_FLASH)
 
@@ -3110,29 +3106,6 @@ void MavlinkReceiver::handle_message_open_drone_id_system(
 
 	_open_drone_id_system_pub.publish(odid_system);
 }
-// add by jay
-void MavlinkReceiver::handle_message_wrench_sensor_pub(mavlink_message_t *msg){
-	mavlink_wrench_sensor_pub_t wrench_sensor_msg;
-	mavlink_msg_wrench_sensor_pub_decode(msg, &wrench_sensor_msg);
-	wrench_sensor_pub_s wrench_sensor_topic{};
-	wrench_sensor_topic.f_x_raw = wrench_sensor_msg.f_x_raw;
-	wrench_sensor_topic.f_y_raw = wrench_sensor_msg.f_y_raw;
-	wrench_sensor_topic.f_z_raw = wrench_sensor_msg.f_z_raw;
-	wrench_sensor_topic.torque_x_raw = wrench_sensor_msg.torque_x_raw;
-	wrench_sensor_topic.torque_y_raw = wrench_sensor_msg.torque_y_raw;
-	wrench_sensor_topic.torque_z_raw = wrench_sensor_msg.torque_z_raw;
-
-	wrench_sensor_topic.fx = wrench_sensor_msg.f_x;
-	wrench_sensor_topic.fy = wrench_sensor_msg.f_y;
-	wrench_sensor_topic.f_xy = wrench_sensor_msg.f_xy;
-	wrench_sensor_topic.total_f = wrench_sensor_msg.total_f;
-	wrench_sensor_topic.azimuth_deg = wrench_sensor_msg.azimuth_deg;
-	wrench_sensor_topic.flap_deg = wrench_sensor_msg.flap_deg;
-	wrench_sensor_topic.timestamp = hrt_absolute_time();
-	_wrench_sensor_pub.publish(wrench_sensor_topic);
-
-}
-// end
 
 void
 MavlinkReceiver::run()
