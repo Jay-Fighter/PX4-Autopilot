@@ -32,6 +32,7 @@
 
 #include "omni_uart_io.hpp"
 #include <unistd.h>
+#include <cstdint>
 #include <cstring>
 #include "px4_platform_common/defines.h"
 
@@ -177,7 +178,7 @@ bool OmniSerialInterface::CheckForRx() {
         return -1;
     }
 
-    PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
+    //     PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
 
     return _bytes_available > 0;
 }
@@ -214,6 +215,13 @@ void OmniSerialInterface::ProcessSerialRx() {
 
     const uint8_t* frame = &_rx_buf[start_index];
 
+    //     if (frame[3] == MOTOR_INIT_DISABLED && _motor_init_flag == false) {
+    //         return;
+    //     } else if (frame[3] == MOTOR_INIT_ENABLED && _motor_init_flag == false) {
+    //         _motor_init_flag = true;
+    //         _single_modu_packet_cmd.frame_enable_flag = 1;
+    //     }
+
     // === 4. 校验帧尾是否正确 (0x0D 0x0A) ===
     if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
         // PX4_WARN("Invalid frame tail: 0x%02X 0x%02X", frame[FRAME_LEN_RX - 2], frame[FRAME_LEN_RX - 1]);
@@ -233,11 +241,11 @@ void OmniSerialInterface::ProcessSerialRx() {
 
     // === 6. 解析字段 ===
     uint8_t motor_index = frame[2];
-    float motor_pos = bytesToFloat(&frame[3]);
-    float motor_vel = bytesToFloat(&frame[7]);
-    uint32_t ua = bytesToUint16(&frame[11]);
-    uint32_t us = bytesToUint16(&frame[13]);
-    uint32_t u = bytesToUint16(&frame[15]);
+    float motor_pos = bytesToFloat(&frame[4]);
+    float motor_vel = bytesToFloat(&frame[8]);
+    uint32_t ua = bytesToUint16(&frame[12]);
+    uint32_t us = bytesToUint16(&frame[14]);
+    uint32_t u = bytesToUint16(&frame[16]);
 
     _motor_telemetry.index = motor_index;
     _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
@@ -251,13 +259,14 @@ void OmniSerialInterface::ProcessSerialRx() {
     _motor_telemetry_pub.publish(_motor_telemetry);
 
     // === 打印完整帧数据（十六进制） ===
-    //     PX4_INFO_RAW(" [ProcessSerialRx]: Received full frame (%d bytes): ", FRAME_LEN_RX);
+    //     PX4_INFO_RAW(" [ProcessSerialRx]: Received From Motor frame (%d bytes): ", FRAME_LEN_RX);
     //     for (int i = 0; i < FRAME_LEN_RX; i++) {
     //         PX4_INFO_RAW("%02X ", frame[i]);
     //     }
     //     PX4_INFO_RAW("\n");
     //     // === 打印调试信息 ===
-    //     PX4_INFO("[ProcessSerialRx]: Telemetry: idx=%d, rad=%.3f, deg=%.3f, rpm=%.3f, ua=%.3f, us=%.3f, u=%.3f, t=%llu", _motor_telemetry.index,
+    //     PX4_INFO("[ProcessSerialRx]: Received From Motor: idx=%d, rad=%.3f, deg=%.3f, rpm=%.3f, ua=%.3f, us=%.3f, u=%.3f, t=%llu",
+    //     _motor_telemetry.index,
     //              (double)_motor_telemetry.obs_angle_rad, (double)_motor_telemetry.obs_angle_deg, (double)_motor_telemetry.obs_rpm,
     //              (double)_motor_telemetry.throttle_ua, (double)_motor_telemetry.throttle_us, (double)_motor_telemetry.throttle_u,
     //              (unsigned long long)_motor_telemetry.timestamp);
@@ -279,6 +288,11 @@ uint32_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
 void OmniSerialInterface::ProcessSerialTx() {
 
     ReOpenSerial();
+
+    if (_param_omni_frame_enable_flag.get() == PX4_OK) {
+        setMotorZeroPosAndRev();
+        return;
+    }
 
     if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
 
@@ -317,6 +331,15 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     // motor index
     frame[frame_len++] = packet.index;
 
+    // === 启动标志位 ===
+    frame[frame_len++] = _param_omni_frame_enable_flag.get();
+
+    // === 零位校正标志位 ===
+    frame[frame_len++] = packet.motor_zero_set_flag;
+
+    // === 编码器角度反转标志位 ===
+    frame[frame_len++] = packet.encoder_reverse_flag;
+
     // throttle ua
     uint16_t ua_val = static_cast<uint32_t>(packet.throttle_ua);
     frame[frame_len++] = (ua_val >> 8) & 0xFF;
@@ -350,11 +373,11 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     frame[frame_len++] = FRAME_END_2;  // 0x0A
 
     //     === 打印调试信息 ===
-    //     PX4_INFO_RAW("[ProcessSerialTx]: Packed Throttle Frame (%zu bytes): ", frame_len);
-    //     for (size_t i = 0; i < frame_len; i++) {
-    //         PX4_INFO_RAW("%02X ", frame[i]);
-    //     }
-    //     PX4_INFO_RAW("\n");
+    PX4_INFO_RAW("[ProcessSerialTx]: Send 2 Motor Frame (%zu bytes): ", frame_len);
+    for (size_t i = 0; i < frame_len; i++) {
+        PX4_INFO_RAW("%02X ", frame[i]);
+    }
+    PX4_INFO_RAW("\n");
 }
 
 void OmniSerialInterface::print_info() {
@@ -366,6 +389,34 @@ void OmniSerialInterface::ReOpenSerial() {
 
     if (_uart_fd < 0) {
         _uart_fd = open(_port_in_use, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    }
+}
+
+void OmniSerialInterface::setMotorZeroPosAndRev() {
+
+    if (_parameter_update_sub.updated()) {
+        parameter_update_s param_update;
+        _parameter_update_sub.copy(&param_update);
+
+        // update parameters from storage
+        updateParams();
+        _single_modu_packet_cmd.frame_enable_flag = 0;
+        _single_modu_packet_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
+        _single_modu_packet_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
+    }
+
+    uint8_t frame_[FRAME_LEN_TX];
+    uint8_t frame_len_ = 0;
+    packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
+    int ret = 0;
+
+    ret = ::write(_uart_fd, frame_, frame_len_);
+
+    if (ret != frame_len_) {
+        perf_count(_comms_errors);
+        PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+        // Flush data written, not transmitted
+        tcflush(_uart_fd, TCOFLUSH);
     }
 }
 

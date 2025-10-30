@@ -34,11 +34,14 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionCallback.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 
 #include <uORB/topics/omni_motor_telemetry.h>
 #include <uORB/topics/omni_packet_cmd.h>
+#include <uORB/topics/parameter_update.h>
 
 #include <containers/Array.hpp>
 
@@ -47,9 +50,12 @@
 #define FRAME_HEADER_2 0xCD
 #define FRAME_END_1 0x0D
 #define FRAME_END_2 0x0A
+#define MOTOR_INIT_DISABLED 0x00  // 电机未进行初始化设置
+#define MOTOR_INIT_ENABLED 0x01   // 电机初始化设置完成
 
-const ssize_t FRAME_LEN_RX = 20;  // 2+1+4+4+2+2+2+1+2
-const ssize_t FRAME_LEN_TX = 18;  // 2+1+2+2+4+4+1+2
+// Packet length based on the protocol defined
+const ssize_t FRAME_LEN_RX = 21;  // 2+1+1+1+1+4+4+2+2+2+1+2
+const ssize_t FRAME_LEN_TX = 21;  // 2+1+1+2+2+4+4+1+2
 
 using namespace time_literals;
 
@@ -117,9 +123,13 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
     void ReOpenSerial();
 
+    void setMotorZeroPosAndRev();
+
    private:
     char _port_in_use[20]{};
     uint8_t _bytes_available;
+
+    //     bool _motor_init_flag{false};
 
     // Buffers for data to transmit or that we're receiving
     uint8_t _rx_buf[256];
@@ -133,6 +143,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
     /*uORB Subscriber*/
     uORB::Subscription _single_modu_packet_cmd_sub{ORB_ID(omni_packet_cmd)};
+    uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
     uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
@@ -144,7 +155,8 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
     // QGC param
     DEFINE_PARAMETERS(
 
-        (ParamInt<px4::params::OMNI_UART_BAUD>)_param_omni_uart_baud
+        (ParamInt<px4::params::OMNI_UART_BAUD>)_param_omni_uart_baud, (ParamInt<px4::params::MOTOR_ZERO_POS>)_param_omni_motor_zero_flag,
+        (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rev_flag, (ParamInt<px4::params::FRAME_ENABLE>)_param_omni_frame_enable_flag
 
     )
 };

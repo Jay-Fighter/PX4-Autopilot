@@ -85,9 +85,12 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
-        (ParamFloat<px4::params::MOTOR_ZERO_BIAS>)_param_omni_motor_zero_bias, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
-        (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-        (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rot_dir, (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
+        // (ParamInt<px4::params::MOTOR_ZERO_POS>)_param_omni_motor_zero_flag, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
+        // (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
+        // (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rev_flag, (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
+        (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
+        (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
+        (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
 #endif
     )
 };

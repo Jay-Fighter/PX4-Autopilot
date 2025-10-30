@@ -262,9 +262,7 @@ set(msg_files
     # add by jay
     omni_swashplateless/OmniModulationCmd.msg
     omni_swashplateless/OmniModulationCmdParam.msg
-    omni_swashplateless/OmniPwmCap.msg
     omni_swashplateless/OmniMotorTelemetry.msg
-    omni_swashplateless/WrenchSensorPub.msg
     omni_swashplateless/OmniPacketCmd.msg
     )
 list(SORT msg_files)

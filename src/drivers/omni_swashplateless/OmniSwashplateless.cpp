@@ -16,7 +16,7 @@ OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkI
     _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
     _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
 
-    _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
+    //     _motor_zero_bias = _param_omni_motor_zero_flag.get();
 }
 
 OmniSwashPlateLess::~OmniSwashPlateLess() {
@@ -108,13 +108,9 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get() * DEG_2_RAD;
         _single_modu_cmd_param.motor_lag_angle_qgc = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
+        // _single_modu_cmd_param.motor_zero_set_flag = _param_omni_motor_zero_flag.get();  // get motor zero bias param
+        // _single_modu_cmd_param.encoder_reverse_flag = _param_encoder_rev_flag.get();     // get encoder rot dir param
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
-
-        // get motor zero bias param
-        _motor_zero_bias = _param_omni_motor_zero_bias.get() * DEG_2_RAD;
-
-        // get encoder rot dir param
-        _encoder_rot_dir = _param_encoder_rot_dir.get();
 
         // publish
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
