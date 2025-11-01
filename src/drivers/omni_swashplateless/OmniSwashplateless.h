@@ -71,6 +71,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     omni_modulation_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
     float _motor_zero_bias{0.0f};                           // rad, motor zero bias, used for motor angle calibration
     int32_t _encoder_rot_dir{0};                            // encoder rotation direction
+    int32_t _exp_mode{0};
 
     /*uORB Subscriber*/
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
@@ -85,12 +86,9 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
-        // (ParamInt<px4::params::MOTOR_ZERO_POS>)_param_omni_motor_zero_flag, (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
-        // (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us, (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-        // (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rev_flag, (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
         (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
         (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-        (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
+        (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias, (ParamInt<px4::params::OMNI_EXP_MODE>)_param_omni_exp_mode
 #endif
     )
 };

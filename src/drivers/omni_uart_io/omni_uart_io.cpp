@@ -167,7 +167,7 @@ int OmniSerialInterface::ConfigureSerialPeripheral(unsigned baud) {
 
 bool OmniSerialInterface::CheckForRx() {
 
-    //     ReOpenSerial();
+    ReOpenSerial();
 
     // read from the uart. This must be non-blocking, so check first if there is data available
     _bytes_available = 0;
@@ -214,13 +214,6 @@ void OmniSerialInterface::ProcessSerialRx() {
     }
 
     const uint8_t* frame = &_rx_buf[start_index];
-
-    //     if (frame[3] == MOTOR_INIT_DISABLED && _motor_init_flag == false) {
-    //         return;
-    //     } else if (frame[3] == MOTOR_INIT_ENABLED && _motor_init_flag == false) {
-    //         _motor_init_flag = true;
-    //         _single_modu_packet_cmd.frame_enable_flag = 1;
-    //     }
 
     // === 4. 校验帧尾是否正确 (0x0D 0x0A) ===
     if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
@@ -282,7 +275,7 @@ float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
 }
 
 uint32_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
-    return (uint32_t(bytes[2]) << 8) | (uint32_t(bytes[3]));
+    return (uint32_t(bytes[0]) << 8) | (uint32_t(bytes[1]));
 }
 
 void OmniSerialInterface::ProcessSerialTx() {
@@ -393,21 +386,21 @@ void OmniSerialInterface::ReOpenSerial() {
 }
 
 void OmniSerialInterface::setMotorZeroPosAndRev() {
-
+    omni_packet_cmd_s pack_cmd{0};
     if (_parameter_update_sub.updated()) {
         parameter_update_s param_update;
         _parameter_update_sub.copy(&param_update);
 
         // update parameters from storage
         updateParams();
-        _single_modu_packet_cmd.frame_enable_flag = 0;
-        _single_modu_packet_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
-        _single_modu_packet_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
+        pack_cmd.frame_enable_flag = _param_omni_frame_enable_flag.get();
+        pack_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
+        pack_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
     }
 
     uint8_t frame_[FRAME_LEN_TX];
     uint8_t frame_len_ = 0;
-    packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
+    packThrottleCmd(pack_cmd, frame_, frame_len_);
     int ret = 0;
 
     ret = ::write(_uart_fd, frame_, frame_len_);
