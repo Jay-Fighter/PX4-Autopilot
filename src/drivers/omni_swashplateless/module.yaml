@@ -32,20 +32,6 @@ parameters:
             default: 0.0
             min: 0.0
             max: 360.0
-        OMNI_EXP_MODE:
-            description:
-                short: Module Param - Different exp mode
-                long: |
-                      0: Fixed us = 0, ua increment with smooth ramp
-                      1: Fixed ua, us increment with smooth ramp
-                      2: Fixed us, ua increment with smooth ramp
-                      3: Fixed ua,us, phase increment 0-360°
-                      4: Common
-
-            type: int32
-            default: 0
-            min: 0
-            max: 10
         MOTOR_DELAY_BIAS:
             description:
                 short: Module Param - Propeller lag angle (unit:deg)

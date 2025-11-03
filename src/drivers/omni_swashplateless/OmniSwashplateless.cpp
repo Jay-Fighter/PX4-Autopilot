@@ -15,8 +15,6 @@ OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkI
     _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
     _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
     _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
-
-    //     _motor_zero_bias = _param_omni_motor_zero_flag.get();
 }
 
 OmniSwashPlateLess::~OmniSwashPlateLess() {
@@ -60,18 +58,17 @@ void OmniSwashPlateLess::modulationCmdCal() {
 
     actuator_outputs_s test_input;
     // Read QGC slider test signal
-    static bool test_input_flag{false};
+    static bool qgc_drag_bar_active{false};
     if (_actuator_output_sub.update(&test_input)) {
 
-        test_input_flag = test_input.output[0] > 1300 ? true : false;
+        qgc_drag_bar_active = test_input.output[0] > 1200 ? true : false;
         // PX4_INFO("ActuatorTest: func=%d action=%d value=%.3f", test_input.function, test_input.action, (double)test_input.value);
     }
 
-    if (!test_input_flag) {
+    if (!qgc_drag_bar_active) {
         reset_throttle_output();
     } else {
         update_test_params();
-
         limit_and_update_outputs();
     }
 
@@ -132,7 +129,6 @@ void OmniSwashPlateLess::update_test_params() {
 
         // update parameters from storage
         updateParams();
-        _exp_mode = _param_omni_exp_mode.get();
 
         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
@@ -146,159 +142,146 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
     }
 
-    switch (_exp_mode) {
-        case 0: {
-            /* Test1: Fixed us=0, ua increment with smooth ramp */
-            static hrt_abstime _last_increment_time = hrt_absolute_time();
-            static bool stop_increment = false;
-            static float target_ua = 0.0f;  // 目标值
+#if OMNI_TEST_MODE_SELECTED == 0
+    /* Test1: Fixed us=0, ua increment with smooth ramp */
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+    static float target_ua = _single_modu_cmd_param.actuator_ctrls_ua_qgc;  // 目标值
 
-            float dt = 0.002f;  // Run() 循环周期 (500Hz)
-            float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
-            float alpha = dt / (tau + dt);
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
 
-            hrt_abstime now = hrt_absolute_time();
+    hrt_abstime now = hrt_absolute_time();
 
-            if (!stop_increment && (now - _last_increment_time) > 10_s) {
-                target_ua += 0.05f;
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                _last_increment_time = now;
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+        target_ua += 0.05f;
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+        _last_increment_time = now;
 
-                if (target_ua > 0.61f) {
-                    _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
-                    stop_increment = true;  // 达到上限后停止
-                }
-            }
-
-            if (!stop_increment) {
-                // x += alpha * (x_target - x);
-                _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
-            }
-            break;
+        if (target_ua > 0.61f) {
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
         }
-
-        case 1: {
-            /*Test2: Fixed ua, us increment with smooth ramp */
-            static hrt_abstime _last_increment_time = hrt_absolute_time();
-            static bool stop_increment = false;
-            static float target_us = 0.0f;  // 目标值
-
-            float dt = 0.002f;  // Run() 循环周期 (500Hz)
-            float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
-            float alpha = dt / (tau + dt);
-
-            hrt_abstime now = hrt_absolute_time();
-            if (!stop_increment && (now - _last_increment_time) > 2_s) {
-                target_us += 0.05f;
-                _last_increment_time = now;
-
-                if (target_us > 0.41f) {
-                    target_us = 0.0f;
-                    _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
-                    _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                    stop_increment = true;  // 达到上限后停止
-                }
-            }
-            if (!stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
-            }
-            break;
-        }
-
-        case 2: {
-            /*Test3: Fixed us, ua increment with smooth ramp*/
-            static hrt_abstime _last_increment_time = hrt_absolute_time();
-            static bool stop_increment = false;
-            static float target_ua = 0.0f;  // 目标值
-
-            float dt = 0.002f;  // Run() 循环周期 (500Hz)
-            float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
-            float alpha = dt / (tau + dt);
-
-            hrt_abstime now = hrt_absolute_time();
-
-            if (!stop_increment && (now - _last_increment_time) > 10_s) {
-
-                target_ua += 0.05f;
-                _last_increment_time = now;
-
-                if (target_ua > 0.51f) {
-                    target_ua = 0.0f;
-                    _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
-                    _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                    stop_increment = true;  // 达到上限后停止
-                }
-            }
-
-            if (!stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
-            }
-            break;
-        }
-
-        case 3: {
-            // exp3: Fixed ua,us, phase increment 0-360°
-            static hrt_abstime _last_increment_time = hrt_absolute_time();
-            static bool stop_increment = false;
-            static float target_phase = 0.0f;  // target phase (deg)
-
-            float dt = 0.002f;  // Run() 循环周期 (500Hz)
-            float tau = 0.1f;   // 平滑时间常数 (秒)，控制爬坡快慢
-            float alpha = dt / (tau + dt);
-
-            hrt_abstime now = hrt_absolute_time();
-
-            if (!stop_increment && (now - _last_increment_time) > 10_s) {
-
-                target_phase += 10.0f;  // step: 10deg
-                _last_increment_time = now;
-
-                if (target_phase > 360.0f) {
-                    // target_phase = 0.0f;
-                    _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
-                    _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                    stop_increment = true;  // 达到上限后停止
-                }
-            }
-
-            if (!stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_pha_qgc += alpha * (target_phase - _single_modu_cmd_param.actuator_ctrls_pha_qgc);
-                // _single_modu_cmd_param.actuator_ctrls_pha_qgc = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
-            }
-            break;
-        }
-
-        case 4: {
-
-            /*Test4: 先给定ua，1s后再叠加上us*/
-            static hrt_abstime _last_increment_time = 0;
-            static float last_ua_param = NAN;
-
-            hrt_abstime now = hrt_absolute_time();
-
-            // 检测参数更新
-            float ua_now = _param_omni_actuator_ctrls_ua.get();
-
-            // 当 ua 被修改时，重新启动延迟
-            if (!PX4_ISFINITE(last_ua_param) || fabsf(ua_now - last_ua_param) > 1e-5f) {
-                _last_increment_time = now;
-            }
-
-            // 更新记录
-            last_ua_param = ua_now;
-
-            // === 延迟逻辑 ===
-            if ((now - _last_increment_time) < 1_s) {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;  // 前 1 s 不加 us
-            } else {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();  // 之后恢复 us
-            }
-
-            break;
-        }
-        default:
-            break;
     }
+
+    if (!stop_increment) {
+        // x += alpha * (x_target - x);
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+    }
+
+#elif OMNI_TEST_MODE_SELECTED == 1
+    /*Test2: Fixed ua, us increment with smooth ramp */
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+    static float target_us = 0.0f;  // 目标值
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
+    hrt_abstime now = hrt_absolute_time();
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+        target_us += 0.05f;
+        _last_increment_time = now;
+
+        if (target_us > 0.41f) {
+            target_us = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
+        }
+    }
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
+    }
+
+#elif OMNI_TEST_MODE_SELECTED == 2
+    /*Test3: Fixed us, ua increment with smooth ramp*/
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+    static float target_ua = _single_modu_cmd_param.actuator_ctrls_ua_qgc;  // 目标值
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
+    hrt_abstime now = hrt_absolute_time();
+
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+
+        target_ua += 0.05f;
+        _last_increment_time = now;
+
+        if (target_ua > 0.51f) {
+            target_ua = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
+        }
+    }
+
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+    }
+
+#elif OMNI_TEST_MODE_SELECTED == 3
+
+    // exp3: Fixed ua,us, phase increment 0-360°
+    static hrt_abstime _last_increment_time = hrt_absolute_time();
+    static bool stop_increment = false;
+    static float target_phase = 0.0f;  // target phase (deg)
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
+    hrt_abstime now = hrt_absolute_time();
+
+    if (!stop_increment && (now - _last_increment_time) > 10_s) {
+
+        target_phase += 10.0f;  // step: 10deg
+        _last_increment_time = now;
+
+        if (target_phase > 360.0f) {
+            // target_phase = 0.0f;
+            _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+            _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+            stop_increment = true;  // 达到上限后停止
+        }
+    }
+
+    if (!stop_increment) {
+        _single_modu_cmd_param.actuator_ctrls_pha_qgc += alpha * (target_phase - _single_modu_cmd_param.actuator_ctrls_pha_qgc);
+        // _single_modu_cmd_param.actuator_ctrls_pha_qgc = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
+    }
+
+#elif OMNI_TEST_MODE_SELECTED == 4
+    /*Test4: 先给定ua，1s后再叠加上us*/
+    static hrt_abstime _last_increment_time = 0;
+    static float last_ua_param = NAN;
+
+    hrt_abstime now = hrt_absolute_time();
+
+    // 检测参数更新
+    float ua_now = _param_omni_actuator_ctrls_ua.get();
+
+    // 当 ua 被修改时，重新启动延迟
+    if (!PX4_ISFINITE(last_ua_param) || fabsf(ua_now - last_ua_param) > 1e-5f) {
+        _last_increment_time = now;
+    }
+
+    // 更新记录
+    last_ua_param = ua_now;
+
+    // === 延迟逻辑 ===
+    if ((now - _last_increment_time) < 1_s) {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;  // 前 1 s 不加 us
+    } else {
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();  // 之后恢复 us
+    }
+#endif
+
     _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
     // publish

@@ -293,11 +293,10 @@ void LoggedTopics::add_debug_topics()
 	//add by jay
 	add_topic("omni_packet_cmd");
 	add_topic("omni_modulation_cmd_param");
-	add_topic("omni_pwm_cap");
-	add_topic("pwm_input");
 	add_topic("omni_motor_telemetry");
 	add_topic_multi("esc_status", 100, 2);
-	add_topic("wrench_sensor_pub");
+	add_topic("actuator_outputs", 100);
+
 }
 
 void LoggedTopics::add_estimator_replay_topics()

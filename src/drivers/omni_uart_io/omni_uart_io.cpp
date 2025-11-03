@@ -294,7 +294,6 @@ void OmniSerialInterface::ProcessSerialTx() {
         return;
     } else {
         if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
-
             uint8_t frame_[FRAME_LEN_TX];
             uint8_t frame_len_ = 0;
             packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
