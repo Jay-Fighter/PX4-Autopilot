@@ -335,10 +335,10 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     frame[frame_len++] = _param_omni_frame_enable_flag.get();
 
     // === 零位校正标志位 ===
-    frame[frame_len++] = packet.motor_zero_set_flag;
+    frame[frame_len++] = _param_omni_motor_zero_flag.get();
 
     // === 编码器角度反转标志位 ===
-    frame[frame_len++] = packet.encoder_reverse_flag;
+    frame[frame_len++] = _param_encoder_rev_flag.get();
 
     // throttle ua
     uint16_t ua_val = static_cast<uint32_t>(packet.throttle_ua);
@@ -373,11 +373,11 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     frame[frame_len++] = FRAME_END_2;  // 0x0A
 
     //     === 打印调试信息 ===
-    PX4_INFO_RAW("[ProcessSerialTx]: Send 2 Motor Frame (%zu bytes): ", frame_len);
-    for (size_t i = 0; i < frame_len; i++) {
-        PX4_INFO_RAW("%02X ", frame[i]);
-    }
-    PX4_INFO_RAW("\n");
+    //     PX4_INFO_RAW("[ProcessSerialTx]: Send 2 Motor Frame (%zu bytes): ", frame_len);
+    //     for (size_t i = 0; i < frame_len; i++) {
+    //         PX4_INFO_RAW("%02X ", frame[i]);
+    //     }
+    //     PX4_INFO_RAW("\n");
 }
 
 void OmniSerialInterface::print_info() {

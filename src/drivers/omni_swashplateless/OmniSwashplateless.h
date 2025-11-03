@@ -14,7 +14,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/actuator_test.h>
+#include <uORB/topics/actuator_outputs.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
@@ -79,7 +79,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     int32_t _exp_mode{0};
 
     /*uORB Subscriber*/
-    uORB::Subscription _actuator_test_sub{ORB_ID(actuator_test)};
+    uORB::Subscription _actuator_output_sub{ORB_ID(actuator_outputs)};
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/

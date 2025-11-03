@@ -58,22 +58,24 @@ void OmniSwashPlateLess::Run() {
 void OmniSwashPlateLess::modulationCmdCal() {
 #ifdef OMNI_DEBUG
 
-    actuator_test_s test_input;
+    actuator_outputs_s test_input;
     // Read QGC slider test signal
-    bool test_input_flag{false};
-    if (_actuator_test_sub.update(&test_input)) {
+    static bool test_input_flag{false};
+    if (_actuator_output_sub.update(&test_input)) {
 
-        test_input_flag = test_input.value > 0.3f ? true : false;
-        if (!test_input_flag) {
-            reset_throttle_output();
-        } else {
-            update_test_params();
-
-            limit_and_update_outputs();
-        }
-
-        publish_throttle();
+        test_input_flag = test_input.output[0] > 1300 ? true : false;
+        // PX4_INFO("ActuatorTest: func=%d action=%d value=%.3f", test_input.function, test_input.action, (double)test_input.value);
     }
+
+    if (!test_input_flag) {
+        reset_throttle_output();
+    } else {
+        update_test_params();
+
+        limit_and_update_outputs();
+    }
+
+    publish_throttle();
 
 #endif
 
@@ -186,7 +188,7 @@ void OmniSwashPlateLess::update_test_params() {
             float alpha = dt / (tau + dt);
 
             hrt_abstime now = hrt_absolute_time();
-            if (!stop_increment && (now - _last_increment_time) > 10_s) {
+            if (!stop_increment && (now - _last_increment_time) > 2_s) {
                 target_us += 0.05f;
                 _last_increment_time = now;
 
