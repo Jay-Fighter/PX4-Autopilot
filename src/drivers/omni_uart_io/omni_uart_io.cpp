@@ -54,6 +54,13 @@ void OmniSerialInterface::Run() {
     perf_begin(_loop_perf);
     perf_count(_loop_interval_perf);
 
+    if (_parameter_update_sub.updated()) {
+        parameter_update_s param_update;
+        _parameter_update_sub.copy(&param_update);
+        // update parameters from storage
+        updateParams();
+    }
+
     if (CheckForRx()) {
         ProcessSerialRx();
         // ProcessSerialTx();
@@ -285,22 +292,22 @@ void OmniSerialInterface::ProcessSerialTx() {
     if (_param_omni_frame_enable_flag.get() == PX4_OK) {
         setMotorZeroPosAndRev();
         return;
-    }
+    } else {
+        if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
 
-    if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
+            uint8_t frame_[FRAME_LEN_TX];
+            uint8_t frame_len_ = 0;
+            packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
+            int ret = 0;
 
-        uint8_t frame_[FRAME_LEN_TX];
-        uint8_t frame_len_ = 0;
-        packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
-        int ret = 0;
+            ret = ::write(_uart_fd, frame_, frame_len_);
 
-        ret = ::write(_uart_fd, frame_, frame_len_);
-
-        if (ret != frame_len_) {
-            perf_count(_comms_errors);
-            PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
-            // Flush data written, not transmitted
-            tcflush(_uart_fd, TCOFLUSH);
+            if (ret != frame_len_) {
+                perf_count(_comms_errors);
+                PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+                // Flush data written, not transmitted
+                tcflush(_uart_fd, TCOFLUSH);
+            }
         }
     }
 }
@@ -387,16 +394,10 @@ void OmniSerialInterface::ReOpenSerial() {
 
 void OmniSerialInterface::setMotorZeroPosAndRev() {
     omni_packet_cmd_s pack_cmd{0};
-    if (_parameter_update_sub.updated()) {
-        parameter_update_s param_update;
-        _parameter_update_sub.copy(&param_update);
 
-        // update parameters from storage
-        updateParams();
-        pack_cmd.frame_enable_flag = _param_omni_frame_enable_flag.get();
-        pack_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
-        pack_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
-    }
+    pack_cmd.frame_enable_flag = _param_omni_frame_enable_flag.get();
+    pack_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
+    pack_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
 
     uint8_t frame_[FRAME_LEN_TX];
     uint8_t frame_len_ = 0;

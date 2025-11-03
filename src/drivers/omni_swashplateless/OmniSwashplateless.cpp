@@ -57,39 +57,65 @@ void OmniSwashPlateLess::Run() {
 
 void OmniSwashPlateLess::modulationCmdCal() {
 #ifdef OMNI_DEBUG
-    update_test_params();
 
-    float ua_temp = _single_modu_cmd_param.actuator_ctrls_ua_qgc * ACTUATOR_CONTROLS_TO_DSHOT;
-    ua_temp = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
-    _single_modu_packet_cmd.throttle_ua = ua_temp;
+    actuator_test_s test_input;
+    // Read QGC slider test signal
+    bool test_input_flag{false};
+    if (_actuator_test_sub.update(&test_input)) {
 
-    // for debug: The amplitude of the sine is a percentage of the throttle
-    _single_modu_packet_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * ua_temp;
+        test_input_flag = test_input.value > 0.3f ? true : false;
+        if (!test_input_flag) {
+            reset_throttle_output();
+        } else {
+            update_test_params();
 
-    _single_modu_packet_cmd.index = 0;  // TODO:确定索引
-    _single_modu_packet_cmd.throttle_ctrls_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
-    _single_modu_packet_cmd.throttle_ctrls_lag_angle = _single_modu_cmd_param.motor_lag_angle_qgc;
+            limit_and_update_outputs();
+        }
 
-    publish_throttle();
+        publish_throttle();
+    }
+
 #endif
 
     // TODO:另一个调制指令则通过姿态环的控制输出来计算，平均升力，相位角
 }
 
-void OmniSwashPlateLess::publish_throttle() {
+void OmniSwashPlateLess::limit_and_update_outputs() {
+
+    // limit throttle ua
+    float ua_temp = _single_modu_cmd_param.actuator_ctrls_ua_qgc * ACTUATOR_CONTROLS_TO_DSHOT;
+    _single_modu_packet_cmd.throttle_ua = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
+
+    // limit throttle us
+    _single_modu_packet_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * _single_modu_packet_cmd.throttle_ua;
     float throttle_margin = THROTTLE_MAX - _single_modu_packet_cmd.throttle_ua;
 
-    // limit the sin amp based on the throttle margin
+    // limit us based on the throttle margin
     if (_single_modu_packet_cmd.throttle_us > _single_modu_packet_cmd.throttle_ua) {
         _single_modu_packet_cmd.throttle_us = _single_modu_packet_cmd.throttle_ua;
     }
+
     if (_single_modu_packet_cmd.throttle_us > throttle_margin) {
         _single_modu_packet_cmd.throttle_us = throttle_margin;
     }
 
     _single_modu_packet_cmd.throttle_us = math::constrain(_single_modu_packet_cmd.throttle_us, 0.0f, static_cast<float>(THROTTLE_SIN_AMP_LIMIT));
 
+    _single_modu_packet_cmd.index = 0;  // TODO:确定索引
+    _single_modu_packet_cmd.throttle_ctrls_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
+    _single_modu_packet_cmd.throttle_ctrls_lag_angle = _single_modu_cmd_param.motor_lag_angle_qgc;
     _single_modu_packet_cmd.timestamp = hrt_absolute_time();
+}
+
+void OmniSwashPlateLess::reset_throttle_output() {
+    _single_modu_packet_cmd.throttle_ua = 0.0f;
+    _single_modu_packet_cmd.throttle_us = 0.0f;
+    _single_modu_packet_cmd.throttle_ctrls_phase = 0.0f;
+    _single_modu_packet_cmd.throttle_ctrls_lag_angle = 0.0f;
+    _single_modu_packet_cmd.timestamp = hrt_absolute_time();
+}
+
+void OmniSwashPlateLess::publish_throttle() {
 
     // publish for logging
     _single_modu_packet_cmd_pub.publish(_single_modu_packet_cmd);

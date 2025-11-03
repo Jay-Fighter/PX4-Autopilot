@@ -14,6 +14,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
+#include <uORB/topics/actuator_test.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
@@ -60,6 +61,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
     void modulationCmdCal();
 
+    void limit_and_update_outputs();
+
+    void reset_throttle_output();
+
     void publish_throttle();
 
     // for test get params from QGC
@@ -74,6 +79,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     int32_t _exp_mode{0};
 
     /*uORB Subscriber*/
+    uORB::Subscription _actuator_test_sub{ORB_ID(actuator_test)};
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
