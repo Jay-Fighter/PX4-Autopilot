@@ -40,7 +40,8 @@
 #include <uORB/SubscriptionInterval.hpp>
 
 #include <uORB/topics/omni_motor_telemetry.h>
-#include <uORB/topics/omni_packet_cmd.h>
+#include <uORB/topics/omni_outputs_cmd.h>
+#include <uORB/topics/omni_outputs_cmd_frame.h>
 #include <uORB/topics/parameter_update.h>
 
 #include <containers/Array.hpp>
@@ -117,7 +118,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
     /**
      * @brief Pack a throttle command packet
      */
-    void packThrottleCmd(const omni_packet_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
+    void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
 
     void print_info();
 
@@ -138,15 +139,16 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
     // The port that we're using for communication
     int _uart_fd{-1};
 
-    omni_packet_cmd_s _single_modu_packet_cmd{0};
+    omni_outputs_cmd_s _single_output_cmd{0};
     omni_motor_telemetry_s _motor_telemetry{0};
 
     /*uORB Subscriber*/
-    uORB::Subscription _single_modu_packet_cmd_sub{ORB_ID(omni_packet_cmd)};
+    uORB::Subscription _single_output_cmd_sub{ORB_ID(omni_outputs_cmd)};
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
     uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
+    uORB::Publication<omni_outputs_cmd_frame_s> _omni_outputs_cmd_frame_pub{ORB_ID(omni_outputs_cmd_frame)};
 
     perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
     perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};

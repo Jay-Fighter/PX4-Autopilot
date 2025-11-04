@@ -15,6 +15,7 @@ OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkI
     _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
     _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
     _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();
+    _single_modu_cmd_param.motor_lag_angle_qgc = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
 }
 
 OmniSwashPlateLess::~OmniSwashPlateLess() {
@@ -83,41 +84,41 @@ void OmniSwashPlateLess::limit_and_update_outputs() {
 
     // limit throttle ua
     float ua_temp = _single_modu_cmd_param.actuator_ctrls_ua_qgc * ACTUATOR_CONTROLS_TO_DSHOT;
-    _single_modu_packet_cmd.throttle_ua = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
+    _single_output_cmd.throttle_ua = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
 
     // limit throttle us
-    _single_modu_packet_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * _single_modu_packet_cmd.throttle_ua;
-    float throttle_margin = THROTTLE_MAX - _single_modu_packet_cmd.throttle_ua;
+    _single_output_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * _single_output_cmd.throttle_ua;
+    float throttle_margin = THROTTLE_MAX - _single_output_cmd.throttle_ua;
 
     // limit us based on the throttle margin
-    if (_single_modu_packet_cmd.throttle_us > _single_modu_packet_cmd.throttle_ua) {
-        _single_modu_packet_cmd.throttle_us = _single_modu_packet_cmd.throttle_ua;
+    if (_single_output_cmd.throttle_us > _single_output_cmd.throttle_ua) {
+        _single_output_cmd.throttle_us = _single_output_cmd.throttle_ua;
     }
 
-    if (_single_modu_packet_cmd.throttle_us > throttle_margin) {
-        _single_modu_packet_cmd.throttle_us = throttle_margin;
+    if (_single_output_cmd.throttle_us > throttle_margin) {
+        _single_output_cmd.throttle_us = throttle_margin;
     }
 
-    _single_modu_packet_cmd.throttle_us = math::constrain(_single_modu_packet_cmd.throttle_us, 0.0f, static_cast<float>(THROTTLE_SIN_AMP_LIMIT));
+    _single_output_cmd.throttle_us = math::constrain(_single_output_cmd.throttle_us, 0.0f, static_cast<float>(THROTTLE_SIN_AMP_LIMIT));
 
-    _single_modu_packet_cmd.index = 0;  // TODO:确定索引
-    _single_modu_packet_cmd.throttle_ctrls_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
-    _single_modu_packet_cmd.throttle_ctrls_lag_angle = _single_modu_cmd_param.motor_lag_angle_qgc;
-    _single_modu_packet_cmd.timestamp = hrt_absolute_time();
+    _single_output_cmd.index = 0;  // TODO:确定索引
+    _single_output_cmd.throttle_ctrls_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc * DEG_2_RAD;
+    _single_output_cmd.throttle_ctrls_lag_angle = _single_modu_cmd_param.motor_lag_angle_qgc;
+    _single_output_cmd.timestamp = hrt_absolute_time();
 }
 
 void OmniSwashPlateLess::reset_throttle_output() {
-    _single_modu_packet_cmd.throttle_ua = 0.0f;
-    _single_modu_packet_cmd.throttle_us = 0.0f;
-    _single_modu_packet_cmd.throttle_ctrls_phase = 0.0f;
-    _single_modu_packet_cmd.throttle_ctrls_lag_angle = 0.0f;
-    _single_modu_packet_cmd.timestamp = hrt_absolute_time();
+    _single_output_cmd.throttle_ua = 0.0f;
+    _single_output_cmd.throttle_us = 0.0f;
+    _single_output_cmd.throttle_ctrls_phase = 0.0f;
+    _single_output_cmd.throttle_ctrls_lag_angle = 0.0f;
+    _single_output_cmd.timestamp = hrt_absolute_time();
 }
 
 void OmniSwashPlateLess::publish_throttle() {
 
     // publish for logging
-    _single_modu_packet_cmd_pub.publish(_single_modu_packet_cmd);
+    _single_output_cmd_pub.publish(_single_output_cmd);
 }
 
 void OmniSwashPlateLess::update_test_params() {
@@ -134,12 +135,10 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = _param_omni_actuator_ctrls_phase.get();  // deg
         _single_modu_cmd_param.motor_lag_angle_qgc = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
-        // _single_modu_cmd_param.motor_zero_set_flag = _param_omni_motor_zero_flag.get();  // get motor zero bias param
-        // _single_modu_cmd_param.encoder_reverse_flag = _param_encoder_rev_flag.get();     // get encoder rot dir param
         _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
         // publish
-        _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
+        // _single_output_cmd_param_pub.publish(_single_modu_cmd_param);
     }
 
 #if OMNI_TEST_MODE_SELECTED == 0
@@ -285,7 +284,7 @@ void OmniSwashPlateLess::update_test_params() {
     _single_modu_cmd_param.timestamp = hrt_absolute_time();
 
     // publish
-    _single_modulation_cmd_param_pub.publish(_single_modu_cmd_param);
+    _single_output_cmd_param_pub.publish(_single_modu_cmd_param);
 }
 
 int OmniSwashPlateLess::task_spawn(int argc, char* argv[]) {

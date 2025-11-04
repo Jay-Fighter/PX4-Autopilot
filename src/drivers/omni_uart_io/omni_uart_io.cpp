@@ -293,10 +293,10 @@ void OmniSerialInterface::ProcessSerialTx() {
         setMotorZeroPosAndRev();
         return;
     } else {
-        if (_single_modu_packet_cmd_sub.update(&_single_modu_packet_cmd)) {
+        if (_single_output_cmd_sub.update(&_single_output_cmd)) {
             uint8_t frame_[FRAME_LEN_TX];
             uint8_t frame_len_ = 0;
-            packThrottleCmd(_single_modu_packet_cmd, frame_, frame_len_);
+            packThrottleCmd(_single_output_cmd, frame_, frame_len_);
             int ret = 0;
 
             ret = ::write(_uart_fd, frame_, frame_len_);
@@ -321,7 +321,7 @@ uint8_t OmniSerialInterface::calcChecksum(const uint8_t* data, size_t len) {
     return static_cast<uint8_t>(sum & 0xFF);
 }
 
-void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8_t* frame, uint8_t& frame_len) {
+void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len) {
 
     // frame header
     frame[frame_len++] = FRAME_HEADER_1;
@@ -377,6 +377,18 @@ void OmniSerialInterface::packThrottleCmd(const omni_packet_cmd_s& packet, uint8
     //         PX4_INFO_RAW("%02X ", frame[i]);
     //     }
     //     PX4_INFO_RAW("\n");
+
+    omni_outputs_cmd_frame_s omni_outputs_cmd_frame{};
+    omni_outputs_cmd_frame.index = packet.index;
+    omni_outputs_cmd_frame.throttle_ua = packet.throttle_ua;
+    omni_outputs_cmd_frame.throttle_us = packet.throttle_us;
+    omni_outputs_cmd_frame.throttle_ctrls_phase = packet.throttle_ctrls_phase;
+    omni_outputs_cmd_frame.throttle_ctrls_lag_angle = packet.throttle_ctrls_lag_angle;
+    omni_outputs_cmd_frame.frame_enable_flag = _param_omni_frame_enable_flag.get();
+    omni_outputs_cmd_frame.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
+    omni_outputs_cmd_frame.encoder_reverse_flag = _param_encoder_rev_flag.get();
+    omni_outputs_cmd_frame.timestamp = hrt_absolute_time();
+    _omni_outputs_cmd_frame_pub.publish(omni_outputs_cmd_frame);
 }
 
 void OmniSerialInterface::print_info() {
@@ -392,11 +404,7 @@ void OmniSerialInterface::ReOpenSerial() {
 }
 
 void OmniSerialInterface::setMotorZeroPosAndRev() {
-    omni_packet_cmd_s pack_cmd{0};
-
-    pack_cmd.frame_enable_flag = _param_omni_frame_enable_flag.get();
-    pack_cmd.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
-    pack_cmd.encoder_reverse_flag = _param_encoder_rev_flag.get();
+    omni_outputs_cmd_s pack_cmd{0};
 
     uint8_t frame_[FRAME_LEN_TX];
     uint8_t frame_len_ = 0;

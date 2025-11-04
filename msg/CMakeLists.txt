@@ -261,9 +261,10 @@ set(msg_files
     versioned/VtolVehicleStatus.msg
     # add by jay
     omni_swashplateless/OmniModulationCmd.msg
-    omni_swashplateless/OmniModulationCmdParam.msg
+    omni_swashplateless/OmniOutputsCmdParam.msg
     omni_swashplateless/OmniMotorTelemetry.msg
-    omni_swashplateless/OmniPacketCmd.msg
+    omni_swashplateless/OmniOutputsCmd.msg
+    omni_swashplateless/OmniOutputsCmdFrame.msg
     )
 list(SORT msg_files)
 

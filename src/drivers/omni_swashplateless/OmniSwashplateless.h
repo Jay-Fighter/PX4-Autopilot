@@ -18,13 +18,13 @@
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/omni_packet_cmd.h>
-#include <uORB/topics/omni_modulation_cmd_param.h>
+#include <uORB/topics/omni_outputs_cmd.h>
+#include <uORB/topics/omni_outputs_cmd_param.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_MODE_SELECTED 1
+#define OMNI_TEST_MODE_SELECTED 3
 
 #define SENSOR_PWM_MAX (8200)
 #define SENSOR_PWM_MIN (24)
@@ -72,8 +72,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
    private:
     /*Variable Definition*/
-    omni_packet_cmd_s _single_modu_packet_cmd{0};
-    omni_modulation_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
+    omni_outputs_cmd_s _single_output_cmd{0};
+    omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
     int32_t _encoder_rot_dir{0};                            // encoder rotation direction
 
     /*uORB Subscriber*/
@@ -81,8 +81,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
-    uORB::Publication<omni_packet_cmd_s> _single_modu_packet_cmd_pub{ORB_ID(omni_packet_cmd)};
-    uORB::Publication<omni_modulation_cmd_param_s> _single_modulation_cmd_param_pub{ORB_ID(omni_modulation_cmd_param)};
+    uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
+    uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
 
     // Performance (perf) counters
     perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
