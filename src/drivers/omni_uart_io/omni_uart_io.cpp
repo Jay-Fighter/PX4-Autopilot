@@ -293,10 +293,11 @@ void OmniSerialInterface::ProcessSerialTx() {
         setMotorZeroPosAndRev();
         return;
     } else {
-        if (_single_output_cmd_sub.update(&_single_output_cmd)) {
+        omni_outputs_cmd_s single_output_cmd{0};
+        if (_single_output_cmd_sub.update(&single_output_cmd)) {
             uint8_t frame_[FRAME_LEN_TX];
             uint8_t frame_len_ = 0;
-            packThrottleCmd(_single_output_cmd, frame_, frame_len_);
+            packThrottleCmd(single_output_cmd, frame_, frame_len_);
             int ret = 0;
 
             ret = ::write(_uart_fd, frame_, frame_len_);
@@ -405,9 +406,9 @@ void OmniSerialInterface::ReOpenSerial() {
 
 void OmniSerialInterface::setMotorZeroPosAndRev() {
     omni_outputs_cmd_s pack_cmd{0};
-
     uint8_t frame_[FRAME_LEN_TX];
     uint8_t frame_len_ = 0;
+
     packThrottleCmd(pack_cmd, frame_, frame_len_);
     int ret = 0;
 

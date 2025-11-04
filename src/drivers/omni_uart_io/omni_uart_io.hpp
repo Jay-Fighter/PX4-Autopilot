@@ -139,7 +139,6 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
     // The port that we're using for communication
     int _uart_fd{-1};
 
-    omni_outputs_cmd_s _single_output_cmd{0};
     omni_motor_telemetry_s _motor_telemetry{0};
 
     /*uORB Subscriber*/

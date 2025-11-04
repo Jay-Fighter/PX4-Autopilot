@@ -173,7 +173,7 @@ void OmniSwashPlateLess::update_test_params() {
     /*Test2: Fixed ua, us increment with smooth ramp */
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
-    static float target_us = 0.0f;  // 目标值
+    static float target_us = _single_modu_cmd_param.actuator_ctrls_ua_qgc;  // 目标值
 
     float dt = 0.002f;  // Run() 循环周期 (500Hz)
     float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
@@ -184,7 +184,7 @@ void OmniSwashPlateLess::update_test_params() {
         target_us += 0.05f;
         _last_increment_time = now;
 
-        if (target_us > 0.41f) {
+        if (target_us > 0.36f) {
             target_us = 0.0f;
             _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
             _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
@@ -229,7 +229,7 @@ void OmniSwashPlateLess::update_test_params() {
     // exp3: Fixed ua,us, phase increment 0-360°
     static hrt_abstime _last_increment_time = hrt_absolute_time();
     static bool stop_increment = false;
-    static float target_phase = 0.0f;  // target phase (deg)
+    static float target_phase = _single_modu_cmd_param.actuator_ctrls_pha_qgc;  // target phase (deg)
 
     float dt = 0.002f;  // Run() 循环周期 (500Hz)
     float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢

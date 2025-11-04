@@ -296,7 +296,7 @@ void LoggedTopics::add_debug_topics()
 	add_topic("omni_motor_telemetry");
 	add_topic_multi("esc_status", 100, 2);
 	add_topic("actuator_outputs", 100);
-	add_topic("omni_outputs_cmd_frame", 100);
+	add_topic("omni_outputs_cmd_frame");
 
 }
 
