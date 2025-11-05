@@ -14,7 +14,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/actuator_test.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
@@ -24,7 +24,7 @@
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_MODE_SELECTED 3
+#define OMNI_TEST_MODE_SELECTED 4
 
 #define SENSOR_PWM_MAX (8200)
 #define SENSOR_PWM_MIN (24)
@@ -74,10 +74,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     /*Variable Definition*/
     omni_outputs_cmd_s _single_output_cmd{0};
     omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
-    int32_t _encoder_rot_dir{0};                            // encoder rotation direction
+    int32_t _encoder_rot_dir{0};                         // encoder rotation direction
 
     /*uORB Subscriber*/
-    uORB::Subscription _actuator_output_sub{ORB_ID(actuator_outputs)};
+    uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
     uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
     /*uORB Publisher*/
@@ -87,6 +87,13 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
     // Performance (perf) counters
     perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
     perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": interval")};
+
+    // exp flags
+    bool _stop_increment{false};
+    hrt_abstime _last_increment_time{0};  // 时间记录
+    float _target_ua{0.0f};
+    float _target_us{0.0f};
+    float _target_phase{0.0f};
 
     DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
