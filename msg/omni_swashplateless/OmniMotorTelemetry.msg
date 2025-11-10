@@ -26,4 +26,8 @@ float32 obs_rpm
 float32 throttle_ua
 float32 throttle_us
 float32 throttle_u
+float32 throttle_phase
+float32 throttle_lag_angle
+float32 esc_voltage
+float32 esc_current
 

@@ -243,17 +243,25 @@ void OmniSerialInterface::ProcessSerialRx() {
     uint8_t motor_index = frame[2];
     float motor_pos = bytesToFloat(&frame[4]);
     float motor_vel = bytesToFloat(&frame[8]);
-    uint32_t ua = bytesToUint16(&frame[12]);
-    uint32_t us = bytesToUint16(&frame[14]);
-    uint32_t u = bytesToUint16(&frame[16]);
+    uint16_t ua = bytesToUint16(&frame[12]);
+    uint16_t us = bytesToUint16(&frame[14]);
+    uint16_t u = bytesToUint16(&frame[16]);
+    float phase = bytesToFloat(&frame[18]);
+    float lag_angle = bytesToFloat(&frame[22]);
+    uint16_t esc_voltage = bytesToUint16(&frame[26]);
+    uint16_t esc_current = bytesToUint16(&frame[28]);
 
     _motor_telemetry.index = motor_index;
     _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
     _motor_telemetry.obs_angle_rad = motor_pos;
     _motor_telemetry.obs_rpm = motor_vel;
-    _motor_telemetry.throttle_ua = (float)ua;
-    _motor_telemetry.throttle_us = (float)us;
-    _motor_telemetry.throttle_u = (float)u;
+    _motor_telemetry.throttle_ua = static_cast<float>(ua);
+    _motor_telemetry.throttle_us = static_cast<float>(us);
+    _motor_telemetry.throttle_u = static_cast<float>(u);
+    _motor_telemetry.throttle_phase = phase;
+    _motor_telemetry.throttle_lag_angle = lag_angle;
+    _motor_telemetry.esc_voltage = static_cast<float>(esc_voltage) * 0.01f;
+    _motor_telemetry.esc_current = static_cast<float>(esc_current) * 0.01f;
     _motor_telemetry.timestamp = hrt_absolute_time();
 
     _motor_telemetry_pub.publish(_motor_telemetry);
@@ -281,8 +289,8 @@ float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
     return val;
 }
 
-uint32_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
-    return (uint32_t(bytes[0]) << 8) | (uint32_t(bytes[1]));
+uint16_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
+    return (uint16_t(bytes[0]) << 8) | (uint16_t(bytes[1]));
 }
 
 void OmniSerialInterface::ProcessSerialTx() {

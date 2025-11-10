@@ -55,8 +55,8 @@
 #define MOTOR_INIT_ENABLED 0x01   // 电机初始化设置完成
 
 // Packet length based on the protocol defined
-const ssize_t FRAME_LEN_RX = 21;  // 2+1+1+1+1+4+4+2+2+2+1+2
-const ssize_t FRAME_LEN_TX = 21;  // 2+1+1+2+2+4+4+1+2
+const ssize_t FRAME_LEN_RX = 33;  //
+const ssize_t FRAME_LEN_TX = 21;  //
 
 using namespace time_literals;
 
@@ -103,7 +103,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
     float bytesToFloat(const uint8_t* bytes);
 
-    uint32_t bytesToUint16(const uint8_t* bytes);
+    uint16_t bytesToUint16(const uint8_t* bytes);
 
     /**
      * @brief check to see if there is any data that we need to transmit over serial
