@@ -55,7 +55,7 @@
 #define MOTOR_INIT_ENABLED 0x01   // 电机初始化设置完成
 
 // Packet length based on the protocol defined
-const ssize_t FRAME_LEN_RX = 33;  //
+const ssize_t FRAME_LEN_RX = 31;  //
 const ssize_t FRAME_LEN_TX = 21;  //
 
 using namespace time_literals;

@@ -236,7 +236,7 @@ void OmniSwashPlateLess::update_test_params() {
 
     hrt_abstime now = hrt_absolute_time();
 
-    if (!_stop_increment && (now - _last_increment_time) > 10_s) {
+    if (!_stop_increment && (now - _last_increment_time) > 1_s) {
 
         _target_phase += 10.0f;  // step: 10deg
         _last_increment_time = now;

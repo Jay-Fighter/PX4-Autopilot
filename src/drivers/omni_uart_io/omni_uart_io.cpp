@@ -242,19 +242,19 @@ void OmniSerialInterface::ProcessSerialRx() {
     // === 6. 解析字段 ===
     uint8_t motor_index = frame[2];
     float motor_pos = bytesToFloat(&frame[4]);
-    float motor_vel = bytesToFloat(&frame[8]);
-    uint16_t ua = bytesToUint16(&frame[12]);
-    uint16_t us = bytesToUint16(&frame[14]);
-    uint16_t u = bytesToUint16(&frame[16]);
-    float phase = bytesToFloat(&frame[18]);
-    float lag_angle = bytesToFloat(&frame[22]);
-    uint16_t esc_voltage = bytesToUint16(&frame[26]);
-    uint16_t esc_current = bytesToUint16(&frame[28]);
+    float motor_vel = bytesToUint16(&frame[8]);
+    uint16_t ua = bytesToUint16(&frame[10]);
+    uint16_t us = bytesToUint16(&frame[12]);
+    uint16_t u = bytesToUint16(&frame[14]);
+    float phase = bytesToFloat(&frame[16]);
+    float lag_angle = bytesToFloat(&frame[20]);
+    uint16_t esc_voltage = bytesToUint16(&frame[24]);
+    uint16_t esc_current = bytesToUint16(&frame[26]);
 
     _motor_telemetry.index = motor_index;
     _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
     _motor_telemetry.obs_angle_rad = motor_pos;
-    _motor_telemetry.obs_rpm = motor_vel;
+    _motor_telemetry.obs_rpm = static_cast<float>(motor_vel) * 100.0f / (14.0f);  // convert erpm to rpm
     _motor_telemetry.throttle_ua = static_cast<float>(ua);
     _motor_telemetry.throttle_us = static_cast<float>(us);
     _motor_telemetry.throttle_u = static_cast<float>(u);
