@@ -74,7 +74,7 @@ bool OmniSerialInterface::init(const char* uart_device) {
     InitSerial(uart_device);
 
     //     ScheduleNow();
-    ScheduleOnInterval(5_ms);  // 50 Hz
+    ScheduleOnInterval(100_ms);  // 100 Hz
 
     return true;
 }
@@ -349,11 +349,11 @@ void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint
     frame[frame_len++] = _param_encoder_rev_flag.get();
 
     // throttle ua
-    uint16_t ua_val = static_cast<uint32_t>(packet.throttle_ua);
+    uint16_t ua_val = static_cast<uint16_t>(packet.throttle_ua);
     frame[frame_len++] = (ua_val >> 8) & 0xFF;
     frame[frame_len++] = ua_val & 0xFF;
 
-    uint16_t us_val = static_cast<uint32_t>(packet.throttle_us);  // ← 注意这里是 throttle_us
+    uint16_t us_val = static_cast<uint16_t>(packet.throttle_us);  // ← 注意这里是 throttle_us
     frame[frame_len++] = (us_val >> 8) & 0xFF;
     frame[frame_len++] = us_val & 0xFF;
 

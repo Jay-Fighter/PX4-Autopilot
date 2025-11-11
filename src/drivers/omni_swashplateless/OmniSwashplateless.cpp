@@ -171,6 +171,10 @@ void OmniSwashPlateLess::update_test_params() {
 #if OMNI_TEST_MODE_SELECTED == 0
     /* Test1: Fixed us=0, ua increment with smooth ramp */
 
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
+
     hrt_abstime now = hrt_absolute_time();
 
     if (!_stop_increment && (now - _last_increment_time) > 10_s) {
@@ -186,11 +190,15 @@ void OmniSwashPlateLess::update_test_params() {
 
     if (!_stop_increment) {
         // x += alpha * (x_target - x);
-        _single_modu_cmd_param.actuator_ctrls_ua_qgc += (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
     }
 
 #elif OMNI_TEST_MODE_SELECTED == 1
     /*Test2: Fixed ua, us increment with smooth ramp */
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
 
     hrt_abstime now = hrt_absolute_time();
     if (!_stop_increment && (now - _last_increment_time) > 10_s) {
@@ -205,11 +213,15 @@ void OmniSwashPlateLess::update_test_params() {
         }
     }
     if (!_stop_increment) {
-        _single_modu_cmd_param.actuator_ctrls_us_qgc += (_target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
+        _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (_target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
     }
 
 #elif OMNI_TEST_MODE_SELECTED == 2
     /*Test3: Fixed us, ua increment with smooth ramp*/
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
 
     hrt_abstime now = hrt_absolute_time();
 
@@ -227,12 +239,16 @@ void OmniSwashPlateLess::update_test_params() {
     }
 
     if (!_stop_increment) {
-        _single_modu_cmd_param.actuator_ctrls_ua_qgc += (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
     }
 
 #elif OMNI_TEST_MODE_SELECTED == 3
 
     // exp3: Fixed ua,us, phase increment 0-360°
+
+    float dt = 0.002f;  // Run() 循环周期 (500Hz)
+    float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
+    float alpha = dt / (tau + dt);
 
     hrt_abstime now = hrt_absolute_time();
 
@@ -250,7 +266,7 @@ void OmniSwashPlateLess::update_test_params() {
     }
 
     if (!_stop_increment) {
-        _single_modu_cmd_param.actuator_ctrls_pha_qgc += (_target_phase - _single_modu_cmd_param.actuator_ctrls_pha_qgc);
+        _single_modu_cmd_param.actuator_ctrls_pha_qgc += alpha * (_target_phase - _single_modu_cmd_param.actuator_ctrls_pha_qgc);
     }
 
 #elif OMNI_TEST_MODE_SELECTED == 4

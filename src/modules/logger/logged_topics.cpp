@@ -291,12 +291,12 @@ void LoggedTopics::add_debug_topics()
 	add_topic("actuator_test", 500);
 
 	//add by jay
-	add_topic("omni_outputs_cmd");
-	add_topic("omni_outputs_cmd_param");
+	add_topic("omni_outputs_cmd", 100);
+	add_topic("omni_outputs_cmd_param", 100);
 	add_topic("omni_motor_telemetry");
-	add_topic_multi("esc_status", 100, 2);
+	// add_topic_multi("esc_status", 100, 2);
 	add_topic("actuator_outputs", 100);
-	add_topic("omni_outputs_cmd_frame");
+	add_topic("omni_outputs_cmd_frame", 100);
 
 }
 
