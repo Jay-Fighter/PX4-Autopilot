@@ -39,68 +39,68 @@ constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 using time_literals::operator""_s;
 
 class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleParams, public px4::ScheduledWorkItem {
-   public:
-    OmniSwashPlateLess();
-    ~OmniSwashPlateLess();
+       public:
+        OmniSwashPlateLess();
+        ~OmniSwashPlateLess();
 
-    /** @see ModuleBase */
-    static int task_spawn(int argc, char* argv[]);
+        /** @see ModuleBase */
+        static int task_spawn(int argc, char* argv[]);
 
-    /** @see ModuleBase */
-    static int custom_command(int argc, char* argv[]);
+        /** @see ModuleBase */
+        static int custom_command(int argc, char* argv[]);
 
-    /** @see ModuleBase */
-    static int print_usage(const char* reason = nullptr);
+        /** @see ModuleBase */
+        static int print_usage(const char* reason = nullptr);
 
-    bool init();
+        bool init();
 
-    void Run() override;
+        void Run() override;
 
-    /** @see ModuleBase::print_status() */
-    int print_status() override;
+        /** @see ModuleBase::print_status() */
+        int print_status() override;
 
-    void modulationCmdCal();
+        void modulationCmdCal();
 
-    void limit_and_update_outputs();
+        void limit_and_update_outputs();
 
-    void reset_throttle_output();
+        void reset_throttle_output();
 
-    void publish_throttle();
+        void publish_throttle();
 
-    // for test get params from QGC
-    void update_test_params();
+        // for test get params from QGC
+        void update_test_params();
 
-   private:
-    /*Variable Definition*/
-    omni_outputs_cmd_s _single_output_cmd{0};
-    omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
-    int32_t _encoder_rot_dir{0};                         // encoder rotation direction
+       private:
+        /*Variable Definition*/
+        omni_outputs_cmd_s _single_output_cmd{0};
+        omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
+        int32_t _encoder_rot_dir{0};                         // encoder rotation direction
 
-    /*uORB Subscriber*/
-    uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
-    uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+        /*uORB Subscriber*/
+        uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
+        uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-    /*uORB Publisher*/
-    uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
-    uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
+        /*uORB Publisher*/
+        uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
+        uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
 
-    // Performance (perf) counters
-    perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
-    perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": interval")};
+        // Performance (perf) counters
+        perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
+        perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": interval")};
 
-    // exp flags
-    bool _stop_increment{false};
-    hrt_abstime _last_increment_time{0};  // 时间记录
-    float _target_ua{0.0f};
-    float _target_us{0.0f};
-    float _target_phase{0.0f};
+        // exp flags
+        bool _stop_increment{false};
+        hrt_abstime _last_increment_time{0};  // 时间记录
+        float _target_ua{0.0f};
+        float _target_us{0.0f};
+        float _target_phase{0.0f};
 
-    DEFINE_PARAMETERS(
+        DEFINE_PARAMETERS(
 #ifdef OMNI_DEBUG
-        (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
-        (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-        (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
+            (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
+            (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
+            (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
 #endif
-    )
+        )
 };
 #endif

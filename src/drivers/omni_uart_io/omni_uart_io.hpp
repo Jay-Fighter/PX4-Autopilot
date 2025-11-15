@@ -61,103 +61,103 @@ const ssize_t FRAME_LEN_TX = 21;  //
 using namespace time_literals;
 
 class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public ModuleParams, public px4::ScheduledWorkItem {
-   public:
-    OmniSerialInterface(const char* uart_device);
-    ~OmniSerialInterface();
+       public:
+        OmniSerialInterface(const char* uart_device);
+        ~OmniSerialInterface();
 
-    void Run() override;
+        void Run() override;
 
-    bool init(const char* uart_device);
+        bool init(const char* uart_device);
 
-    /**
-     * @brief Initialize our serial peripheral
-     */
-    int InitSerial(const char* uart_device);
+        /**
+         * @brief Initialize our serial peripheral
+         */
+        int InitSerial(const char* uart_device);
 
-    /**
-     * Turn off and close the serial connection
-     */
-    void DeinitSerial();
+        /**
+         * Turn off and close the serial connection
+         */
+        void DeinitSerial();
 
-    /**
-     * set the Baudrate
-     * @param baud
-     * @return 0 on success, <0 on error
-     */
-    int ConfigureSerialPeripheral(unsigned baud);
+        /**
+         * set the Baudrate
+         * @param baud
+         * @return 0 on success, <0 on error
+         */
+        int ConfigureSerialPeripheral(unsigned baud);
 
-    /**
-     * @brief Check to see if there are any valid packets for us to read
-     *
-     * @return true If there is a packet
-     * @return false If there is not a packet
-     */
-    bool CheckForRx();
+        /**
+         * @brief Check to see if there are any valid packets for us to read
+         *
+         * @return true If there is a packet
+         * @return false If there is not a packet
+         */
+        bool CheckForRx();
 
-    /**
-     * @brief Read a packet from our packet finder and return a pointer to the beginning of the data
-     *
-     * @return uint8_t* A pointer to the start of the packet
-     */
-    void ProcessSerialRx();
+        /**
+         * @brief Read a packet from our packet finder and return a pointer to the beginning of the data
+         *
+         * @return uint8_t* A pointer to the start of the packet
+         */
+        void ProcessSerialRx();
 
-    float bytesToFloat(const uint8_t* bytes);
+        float bytesToFloat(const uint8_t* bytes);
 
-    uint16_t bytesToUint16(const uint8_t* bytes);
+        uint16_t bytesToUint16(const uint8_t* bytes);
 
-    /**
-     * @brief check to see if there is any data that we need to transmit over serial
-     */
-    void ProcessSerialTx();
+        /**
+         * @brief check to see if there is any data that we need to transmit over serial
+         */
+        void ProcessSerialTx();
 
-    /**
-     * @brief Calculate the checksum for a given packet
-     */
-    uint8_t calcChecksum(const uint8_t* data, size_t len);
+        /**
+         * @brief Calculate the checksum for a given packet
+         */
+        uint8_t calcChecksum(const uint8_t* data, size_t len);
 
-    /**
-     * @brief Pack a throttle command packet
-     */
-    void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
+        /**
+         * @brief Pack a throttle command packet
+         */
+        void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
 
-    void print_info();
+        void print_info();
 
-    void ReOpenSerial();
+        void ReOpenSerial();
 
-    void setMotorZeroPosAndRev();
+        void setMotorZeroPosAndRev();
 
-   private:
-    char _port_in_use[20]{};
-    uint8_t _bytes_available;
+       private:
+        char _port_in_use[20]{};
+        uint8_t _bytes_available;
 
-    //     bool _motor_init_flag{false};
+        //     bool _motor_init_flag{false};
 
-    // Buffers for data to transmit or that we're receiving
-    uint8_t _rx_buf[256];
-    uint8_t _tx_buf[256];
+        // Buffers for data to transmit or that we're receiving
+        uint8_t _rx_buf[256];
+        uint8_t _tx_buf[256];
 
-    // The port that we're using for communication
-    int _uart_fd{-1};
+        // The port that we're using for communication
+        int _uart_fd{-1};
 
-    omni_motor_telemetry_s _motor_telemetry{0};
+        omni_motor_telemetry_s _motor_telemetry{0};
 
-    /*uORB Subscriber*/
-    uORB::Subscription _single_output_cmd_sub{ORB_ID(omni_outputs_cmd)};
-    uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+        /*uORB Subscriber*/
+        uORB::Subscription _single_output_cmd_sub{ORB_ID(omni_outputs_cmd)};
+        uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-    /*uORB Publisher*/
-    uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
-    uORB::Publication<omni_outputs_cmd_frame_s> _omni_outputs_cmd_frame_pub{ORB_ID(omni_outputs_cmd_frame)};
+        /*uORB Publisher*/
+        uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
+        uORB::Publication<omni_outputs_cmd_frame_s> _omni_outputs_cmd_frame_pub{ORB_ID(omni_outputs_cmd_frame)};
 
-    perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
-    perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};
-    perf_counter_t _comms_errors;  //统计某类事件的发生次数
+        perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
+        perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};
+        perf_counter_t _comms_errors;  //统计某类事件的发生次数
 
-    // QGC param
-    DEFINE_PARAMETERS(
+        // QGC param
+        DEFINE_PARAMETERS(
 
-        (ParamInt<px4::params::OMNI_UART_BAUD>)_param_omni_uart_baud, (ParamInt<px4::params::MOTOR_ZERO_POS>)_param_omni_motor_zero_flag,
-        (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rev_flag, (ParamInt<px4::params::FRAME_ENABLE>)_param_omni_frame_enable_flag
+            (ParamInt<px4::params::OMNI_UART_BAUD>)_param_omni_uart_baud, (ParamInt<px4::params::MOTOR_ZERO_POS>)_param_omni_motor_zero_flag,
+            (ParamInt<px4::params::ENCODER_ROT_DIR>)_param_encoder_rev_flag, (ParamInt<px4::params::FRAME_ENABLE>)_param_omni_frame_enable_flag
 
-    )
+        )
 };
