@@ -105,6 +105,14 @@ void OmniSwashPlateLess::modulationCmdCal() {
 #endif
 
         // TODO:另一个调制指令则通过姿态环的控制输出来计算，平均升力，相位角
+
+        omni_actuator_setpoint_s omni_actuator_setpoint;
+
+        if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
+                for (size_t index = 0; index < OMNI_ACTUATOR_NUM; index++) {
+			
+		}
+        }
 }
 
 void OmniSwashPlateLess::limit_and_update_outputs() {
@@ -177,12 +185,12 @@ void OmniSwashPlateLess::update_test_params() {
 
         hrt_abstime now = hrt_absolute_time();
 
-        if (!_stop_increment && (now - _last_increment_time) > 10_s) {
+        if (!_stop_increment && (now - _last_increment_time) > 5_s) {
                 _target_ua += 0.05f;
                 _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;  // 固定 us=0
                 _last_increment_time = now;
 
-                if (_target_ua > 0.56f) {
+                if (_target_ua > 0.51f) {
                         _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
                         _stop_increment = true;  // 达到上限后停止
                 }
@@ -201,11 +209,11 @@ void OmniSwashPlateLess::update_test_params() {
         float alpha = dt / (tau + dt);
 
         hrt_abstime now = hrt_absolute_time();
-        if (!_stop_increment && (now - _last_increment_time) > 10_s) {
+        if (!_stop_increment && (now - _last_increment_time) > 5_s) {
                 _target_us += 0.05f;
                 _last_increment_time = now;
 
-                if (_target_us > 0.31f) {
+                if (_target_us > 0.26f) {
                         _target_us = 0.0f;
                         _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
                         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;

@@ -40,7 +40,7 @@
  */
 
 #include "ControlAllocationPseudoInverse.hpp"
-
+#include <px4_platform_common/log.h>
 void
 ControlAllocationPseudoInverse::setEffectivenessMatrix(
 	const matrix::Matrix<float, ControlAllocation::NUM_AXES, ControlAllocation::NUM_ACTUATORS> &effectiveness,
@@ -174,6 +174,9 @@ ControlAllocationPseudoInverse::normalizeControlAllocationMatrix()
 			}
 		}
 	}
+	PX4_INFO("Control allocation matrix:");
+	PX4_INFO("  Mixer.T =");
+	_mix.print();
 }
 
 void

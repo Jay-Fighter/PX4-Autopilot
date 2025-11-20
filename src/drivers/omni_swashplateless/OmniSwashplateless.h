@@ -10,6 +10,8 @@
 
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+
 #include <uORB/uORB.h>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
@@ -20,14 +22,13 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/omni_outputs_cmd.h>
 #include <uORB/topics/omni_outputs_cmd_param.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <uORB/topics/omni_actuator_setpoint.h>
 
 #define OMNI_DEBUG 1
 
 #define OMNI_TEST_MODE_SELECTED 2
+#define OMNI_ACTUATOR_NUM 4
 
-#define SENSOR_PWM_MAX (8200)
-#define SENSOR_PWM_MIN (24)
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
@@ -79,9 +80,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         /*uORB Subscriber*/
         uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
         uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	uORB::Subscription _omni_actuator_setpoint_sub{ORB_ID(omni_actuator_setpoint)};
 
         /*uORB Publisher*/
-        uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
+        uORB::Publication<omni_ outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
         uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
 
         // Performance (perf) counters

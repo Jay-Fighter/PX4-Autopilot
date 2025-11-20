@@ -265,6 +265,7 @@ set(msg_files
     omni_swashplateless/OmniMotorTelemetry.msg
     omni_swashplateless/OmniOutputsCmd.msg
     omni_swashplateless/OmniOutputsCmdFrame.msg
+    omni_swashplateless/OmniActuatorSetpoint.msg
     )
 list(SORT msg_files)
 

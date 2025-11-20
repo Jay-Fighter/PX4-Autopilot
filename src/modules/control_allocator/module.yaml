@@ -33,6 +33,7 @@ parameters:
                 13: Rover (Mecanum)
                 14: Spacecraft 2D
                 15: Spacecraft 3D
+                16: Omni_Multirotor
             default: 0
 
         CA_METHOD:
@@ -1205,3 +1206,30 @@ mixer:
                         position: [ -1, 1, 0 ]
                       - name: 'Left Motor Back'
                         position: [ -1, -1, 0 ]
+            16: # Multirotor
+                type: 'omni_multirotor'
+                title: 'Omni_Multirotor'
+                actuators:
+                  - actuator_type: 'motor'
+                    count: 'CA_ROTOR_COUNT'
+                    per_item_parameters:
+                        standard:
+                            position: [ 'CA_ROTOR${i}_PX', 'CA_ROTOR${i}_PY', 'CA_ROTOR${i}_PZ' ]
+                        extra:
+                          - name: 'CA_ROTOR${i}_KM'
+                            label: 'Direction CCW'
+                            function: 'spin-dir'
+                            show_as: 'true-if-positive'
+                          - name: 'CA_ROTOR${i}_AX'
+                            label: 'Axis X'
+                            function: 'axisx'
+                            advanced: true
+                          - name: 'CA_ROTOR${i}_AY'
+                            label: 'Axis Y'
+                            function: 'axisy'
+                            advanced: true
+                          - name: 'CA_ROTOR${i}_AZ'
+                            label: 'Axis Z'
+                            function: 'axisz'
+                            advanced: true
+
