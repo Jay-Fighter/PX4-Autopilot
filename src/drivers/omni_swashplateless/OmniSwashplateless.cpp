@@ -109,9 +109,7 @@ void OmniSwashPlateLess::modulationCmdCal() {
         omni_actuator_setpoint_s omni_actuator_setpoint;
 
         if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
-                for (size_t index = 0; index < OMNI_ACTUATOR_NUM; index++) {
-			
-		}
+                for (size_t index = 0; index < OMNI_ACTUATOR_NUM; index++) {}
         }
 }
 
@@ -300,6 +298,95 @@ void OmniSwashPlateLess::update_test_params() {
         } else {
                 _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();  // 之后恢复 us
         }
+
+#elif OMNI_TEST_MODE_SELECTED == 5
+
+        // ======= 固定参数 =======
+        float us_max = 0.26f;
+        float f = 0.20f;               // 三角波频率 0.25 Hz
+        float T = 1.0f / f;            // 一个周期（秒）
+        static int cycle_count = 0;    // 已完成周期数
+        static bool finished = false;  // 已完成 6 周停止
+
+        // ======= 当前时间 t（秒） =======
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;  // µs → s 转换
+
+        // ======= 如果已经结束：归零并退出 =======
+        if (finished) {
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;  // 固定UA或你想要的值
+                return;
+        }
+
+        // ======= 当前相位 =======
+        float phase = fmodf(t, T);
+
+        // ======= 检查周期是否完成 =======
+        static float last_phase = 0.0f;
+        if (phase < last_phase) {
+                cycle_count++;
+                if (cycle_count >= 6) {  // 只执行 6 次三角波
+                        finished = true;
+                }
+        }
+        last_phase = phase;
+
+        // ======= 三角波计算 =======
+        float ramp;
+        if (phase < T * 0.5f) {
+                ramp = phase / (T * 0.5f);  // 0 → 1
+        } else {
+                ramp = 2.0f - (phase / (T * 0.5f));  // 1 → 0
+        }
+
+        // ======= 映射输出 =======
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = ramp * us_max;
+
+#elif OMNI_TEST_MODE_SELECTED == 6
+
+        // ======= 固定参数 =======
+        float f = 0.20f;               // 频率 0.20 Hz
+        float T = 1.0f / f;            // 一个周期（秒）
+        static int cycle_count = 0;    // 已完成往返次数（0→360→0 算 1 次）
+        static bool finished = false;  // 完成后停止输出
+
+        // ======= 当前时间 t（秒） =======
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        // ======= 如果结束则归零 =======
+        if (finished) {
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = 0.0f;
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;  // Optional
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+                return;
+        }
+
+        // ======= 当前相位 =======
+        float phase = fmodf(t, T);
+
+        // ======= 检查周期是否结束 =======
+        static float last_phase = 0.0f;
+        if (phase < last_phase) {  // 周期回绕检查
+                cycle_count++;
+                if (cycle_count >= 6) {  // 执行 6 个往返
+                        finished = true;
+                }
+        }
+        last_phase = phase;
+
+        // ======= 三角波计算（0→1→0）=======
+        float ramp;
+        if (phase < T * 0.5f) {
+                ramp = phase / (T * 0.5f);  // 上升：0 → 1
+        } else {
+                ramp = 2.0f - (phase / (T * 0.5f));  // 下降：1 → 0
+        }
+
+        // ======= 映射到相位角（0° → 360° → 0°）=======
+        _single_modu_cmd_param.actuator_ctrls_pha_qgc = ramp * 360.0f;
+
 #endif
 
         _single_modu_cmd_param.timestamp = hrt_absolute_time();

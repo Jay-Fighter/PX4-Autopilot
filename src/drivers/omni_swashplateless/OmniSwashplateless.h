@@ -26,9 +26,17 @@
 
 #define OMNI_DEBUG 1
 
-#define OMNI_TEST_MODE_SELECTED 2
-#define OMNI_ACTUATOR_NUM 4
+// OMNI_TEST_UA_RAMP_US_0 = 0,          // Test1: ua increasing, us = 0
+// OMNI_TEST_UA_FIXED_US_RAMP = 1,      // Test2: us increasing, ua = fixed
+// OMNI_TEST_US_FIXED_UA_RAMP = 2,      // Test3: ua increasing, us = fixed
+// OMNI_TEST_PHASE_SWEEP = 3,           // Test4: phase increasing, ua us = fixed
+// OMNI_TEST_DELAY_US = 4,              // Test5: ua→us 延迟加入
+// OMNI_TEST_TRIANGLE_TRAJ_US = 5,      // Test6: us triangle wave trajectory, ua = fixed
+// OMNI_TEST_UA_US_FIXED_PHA_TRAJ = 6,  // Test6: phase triangle wave trajectory, ua us = fixed
 
+#define OMNI_TEST_MODE_SELECTED 6
+
+#define OMNI_ACTUATOR_NUM 4
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
@@ -80,10 +88,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         /*uORB Subscriber*/
         uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
         uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
-	uORB::Subscription _omni_actuator_setpoint_sub{ORB_ID(omni_actuator_setpoint)};
+        uORB::Subscription _omni_actuator_setpoint_sub{ORB_ID(omni_actuator_setpoint)};
 
         /*uORB Publisher*/
-        uORB::Publication<omni_ outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
+        uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
         uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
 
         // Performance (perf) counters
