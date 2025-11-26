@@ -224,28 +224,26 @@ void OmniSwashPlateLess::update_test_params() {
 
 #elif OMNI_TEST_MODE_SELECTED == 2
         /*Test3: Fixed us, ua increment with smooth ramp*/
-
-        float dt = 0.002f;  // Run() 循环周期 (500Hz)
-        float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
-        float alpha = dt / (tau + dt);
+        static float ua_base = _param_omni_actuator_ctrls_ua.get();
 
         hrt_abstime now = hrt_absolute_time();
 
-        if (!_stop_increment && (now - _last_increment_time) > 10_s) {
+        float dt = (now - _last_increment_time) * 1e-6f;
 
-                _target_ua += 0.05f;
-                _last_increment_time = now;
+        if (!_stop_increment) {
+
+                _target_ua = ua_base + 0.5f * (dt / 10.0f);  // 10 秒内线性从 0→0.5
 
                 if (_target_ua > 0.51f) {
                         _target_ua = 0.0f;
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
                         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
                         _stop_increment = true;  // 达到上限后停止
                 }
         }
 
         if (!_stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = _target_ua;
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 3
@@ -300,8 +298,7 @@ void OmniSwashPlateLess::update_test_params() {
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 5
-
-        // ======= 固定参数 =======
+        // Test6: us triangle wave trajectory, ua = fixed
         float us_max = 0.26f;
         float f = 0.20f;               // 三角波频率 0.25 Hz
         float T = 1.0f / f;            // 一个周期（秒）
@@ -344,9 +341,10 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = ramp * us_max;
 
 #elif OMNI_TEST_MODE_SELECTED == 6
+        /*Test7: phase triangle wave trajectory, ua us = fixed*/
 
         // ======= 固定参数 =======
-        float f = 0.20f;               // 频率 0.20 Hz
+        float f = 0.10f;               // 频率 0.20 Hz
         float T = 1.0f / f;            // 一个周期（秒）
         static int cycle_count = 0;    // 已完成往返次数（0→360→0 算 1 次）
         static bool finished = false;  // 完成后停止输出
@@ -386,6 +384,28 @@ void OmniSwashPlateLess::update_test_params() {
 
         // ======= 映射到相位角（0° → 360° → 0°）=======
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = ramp * 360.0f;
+
+#elif OMNI_TEST_MODE_SELECTED == 7
+        /*Test8: us trajectory, ua phase = fixed*/
+        static float us_base = _param_omni_actuator_ctrls_us.get();
+
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        if (!_stop_increment) {
+                _target_us = us_base + 0.25f * (t / 10.0f);
+
+                if (_target_us > 0.30f) {
+                        _target_us = 0.0f;
+                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+                        _stop_increment = true;  // 达到上限后停止
+                }
+        }
+
+        if (!_stop_increment) {
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = _target_us;
+        }
 
 #endif
 

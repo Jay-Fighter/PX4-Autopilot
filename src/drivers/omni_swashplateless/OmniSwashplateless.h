@@ -32,9 +32,10 @@
 // OMNI_TEST_PHASE_SWEEP = 3,           // Test4: phase increasing, ua us = fixed
 // OMNI_TEST_DELAY_US = 4,              // Test5: ua→us 延迟加入
 // OMNI_TEST_TRIANGLE_TRAJ_US = 5,      // Test6: us triangle wave trajectory, ua = fixed
-// OMNI_TEST_UA_US_FIXED_PHA_TRAJ = 6,  // Test6: phase triangle wave trajectory, ua us = fixed
+// OMNI_TEST_UA_US_FIXED_PHA_TRAJ = 6,  // Test7: phase triangle wave trajectory, ua us = fixed
+// OMNI_TEST_UA_PHA_FIXED_US_TRAJ = 7,  // Test8: us trajectory, ua phase = fixed
 
-#define OMNI_TEST_MODE_SELECTED 6
+#define OMNI_TEST_MODE_SELECTED 7
 
 #define OMNI_ACTUATOR_NUM 4
 
