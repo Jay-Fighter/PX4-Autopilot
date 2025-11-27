@@ -175,64 +175,82 @@ void OmniSwashPlateLess::update_test_params() {
         }
 
 #if OMNI_TEST_MODE_SELECTED == 0
-        /* Test1: Fixed us=0, ua increment with smooth ramp */
+        /* Test1: Fixed us=0, ua increment with smooth ramp
+         * ua(t) = ua_base + (t / UA_RAMP_TIME) * UA_MAX
+         * us(t) = 0
+         */
 
-        float dt = 0.002f;  // Run() 循环周期 (500Hz)
-        float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
-        float alpha = dt / (tau + dt);
+        static float ua_base = _param_omni_actuator_ctrls_ua.get();
+        static float ua_max = 0.5f;
+        static float ua_ramp_time = 30.0f;  // 30s arrive at max value
 
         hrt_abstime now = hrt_absolute_time();
 
-        if (!_stop_increment && (now - _last_increment_time) > 5_s) {
-                _target_ua += 0.05f;
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        if (!_stop_increment) {
+                _target_ua = ua_base + ua_max * (t / ua_ramp_time);
                 _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;  // 固定 us=0
-                _last_increment_time = now;
 
                 if (_target_ua > 0.51f) {
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
                         _stop_increment = true;  // 达到上限后停止
                 }
         }
 
         if (!_stop_increment) {
-                // x += alpha * (x_target - x);
-                _single_modu_cmd_param.actuator_ctrls_ua_qgc += alpha * (_target_ua - _single_modu_cmd_param.actuator_ctrls_ua_qgc);
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = _target_ua;
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 1
-        /*Test2: Fixed ua, us increment with smooth ramp */
+        /* Test2: Fixed ua, us increment with smooth ramp
+         * us(t) = us_base + (t / US_RAMP_TIME) * US_MAX
+         * ua(t) = constant
+         */
 
-        float dt = 0.002f;  // Run() 循环周期 (500Hz)
-        float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
-        float alpha = dt / (tau + dt);
+        static float us_base = _param_omni_actuator_ctrls_us.get();
+
+        static float us_max = 0.25f;
+
+        static float us_ramp_time = 15.0f;  // 15s arrive at max value
 
         hrt_abstime now = hrt_absolute_time();
-        if (!_stop_increment && (now - _last_increment_time) > 5_s) {
-                _target_us += 0.05f;
-                _last_increment_time = now;
+        float t = (now - _last_increment_time) * 1e-6f;
 
-                if (_target_us > 0.26f) {
+        if (!_stop_increment) {
+                _target_us = us_base + us_max * (t / us_ramp_time);
+
+                if (_target_us > 0.31f) {
                         _target_us = 0.0f;
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.0f;
+                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
                         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
                         _stop_increment = true;  // 达到上限后停止
                 }
         }
+
         if (!_stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc += alpha * (_target_us - _single_modu_cmd_param.actuator_ctrls_us_qgc);
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = _target_us;
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 2
-        /*Test3: Fixed us, ua increment with smooth ramp*/
+        /* Test3: Fixed us, ua increment with smooth ramp
+         * ua(t) = ua_base + (t / UA_RAMP_TIME) * UA_MAX
+         * us(t) = constant
+         */
+
         static float ua_base = _param_omni_actuator_ctrls_ua.get();
+
+        static float ua_max = 0.5f;
+
+        static float ua_ramp_time = 20.0f;  // 15s arrive at max value
 
         hrt_abstime now = hrt_absolute_time();
 
-        float dt = (now - _last_increment_time) * 1e-6f;
+        float t = (now - _last_increment_time) * 1e-6f;
 
         if (!_stop_increment) {
 
-                _target_ua = ua_base + 0.5f * (dt / 10.0f);  // 10 秒内线性从 0→0.5
+                _target_ua = ua_base + ua_max * (t / ua_ramp_time);  // 10 秒内线性从 0→0.5
 
                 if (_target_ua > 0.51f) {
                         _target_ua = 0.0f;
@@ -248,33 +266,39 @@ void OmniSwashPlateLess::update_test_params() {
 
 #elif OMNI_TEST_MODE_SELECTED == 3
 
-        // exp3: Fixed ua,us, phase increment 0-360°
+        /* Test4: Fixed ua, us, phase increment with smooth ramp until count > cycles_target
+         * phase(t) = (t / UA_RAMP_TIME) * 2PI
+         * ua(t), us(t) = constant
+         */
+        static int cycles_target = 5.0f;
 
-        float dt = 0.002f;  // Run() 循环周期 (500Hz)
-        float tau = 0.05f;  // 平滑时间常数 (秒)，控制爬坡快慢
-        float alpha = dt / (tau + dt);
+        static float time_period = 10.0f;  // 10s 一圈
 
         hrt_abstime now = hrt_absolute_time();
 
-        if (!_stop_increment && (now - _last_increment_time) > 1_s) {
-
-                _target_phase += 10.0f;  // step: 10deg
-                _last_increment_time = now;
-
-                if (_target_phase > 360.0f) {
-                        // target_phase = 0.0f;
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
-                        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                        _stop_increment = true;  // 达到上限后停止
-                }
-        }
+        float t = (now - _last_increment_time) * 1e-6f;  // elapsed [s]
 
         if (!_stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_pha_qgc += alpha * (_target_phase - _single_modu_cmd_param.actuator_ctrls_pha_qgc);
+
+                float count = t / time_period;  // 已旋转的“圈数”
+
+                _target_phase = fmodf(count * 360.0f, 360.0f);  // 映射到 0~360°
+
+                // ======= 输出相位 =======
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = _target_phase;
+
+                // ======= 判定是否达到指定圈数 =======
+                if (count >= cycles_target) {
+                        _stop_increment = true;
+                }
+
+        } else {
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 4
-        /*Test4: 先给定ua，1s后再叠加上us*/
+        /*Test5: 先给定ua，1s后再叠加上us*/
         static float last_ua_param = NAN;
 
         hrt_abstime now = hrt_absolute_time();
@@ -298,18 +322,18 @@ void OmniSwashPlateLess::update_test_params() {
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 5
-        // Test6: us triangle wave trajectory, ua = fixed
+        /* Test6: Fixed ua, phase, triangle wave on us (0 → us_max → 0) until count > cycles_target
+         * us(t) = (t / UA_RAMP_TIME) * 2PI
+         * ua(t), phase(t) = constant
+         */
         float us_max = 0.26f;
-        float f = 0.20f;               // 三角波频率 0.25 Hz
-        float T = 1.0f / f;            // 一个周期（秒）
+        float T = 6.0f;                // 一个周期（秒）
         static int cycle_count = 0;    // 已完成周期数
         static bool finished = false;  // 已完成 6 周停止
 
-        // ======= 当前时间 t（秒） =======
         hrt_abstime now = hrt_absolute_time();
-        float t = (now - _last_increment_time) * 1e-6f;  // µs → s 转换
+        float t = (now - _last_increment_time) * 1e-6f;  // elapsed [s]
 
-        // ======= 如果已经结束：归零并退出 =======
         if (finished) {
                 _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
                 _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;  // 固定UA或你想要的值
@@ -317,36 +341,40 @@ void OmniSwashPlateLess::update_test_params() {
         }
 
         // ======= 当前相位 =======
-        float phase = fmodf(t, T);
+        float current_time = fmodf(t, T);
 
         // ======= 检查周期是否完成 =======
         static float last_phase = 0.0f;
-        if (phase < last_phase) {
+        if (current_time < last_phase) {
                 cycle_count++;
                 if (cycle_count >= 6) {  // 只执行 6 次三角波
                         finished = true;
                 }
         }
-        last_phase = phase;
+        last_phase = current_time;
 
         // ======= 三角波计算 =======
         float ramp;
-        if (phase < T * 0.5f) {
-                ramp = phase / (T * 0.5f);  // 0 → 1
+        if (current_time < T * 0.5f) {
+                ramp = current_time / (T * 0.5f);  // 0 → 1
         } else {
-                ramp = 2.0f - (phase / (T * 0.5f));  // 1 → 0
+                ramp = 2.0f - (current_time / (T * 0.5f));  // 1 → 0
         }
 
         // ======= 映射输出 =======
         _single_modu_cmd_param.actuator_ctrls_us_qgc = ramp * us_max;
 
 #elif OMNI_TEST_MODE_SELECTED == 6
-        /*Test7: phase triangle wave trajectory, ua us = fixed*/
+
+        /* Test7: Fixed ua, us, triangle wave on phase (0 → 360 → 0) until count > cycles_target
+         * phase(t) = (t / UA_RAMP_TIME) * 2PI
+         * ua(t), us(t) = constant
+         */
 
         // ======= 固定参数 =======
-        float f = 0.10f;               // 频率 0.20 Hz
-        float T = 1.0f / f;            // 一个周期（秒）
-        static int cycle_count = 0;    // 已完成往返次数（0→360→0 算 1 次）
+        float T = 10.0f;             // 一个周期（秒）
+        static int cycle_count = 0;  // 已完成往返次数（0→360→0 算 1 次）
+        static int cycles_target = 5;
         static bool finished = false;  // 完成后停止输出
 
         // ======= 当前时间 t（秒） =======
@@ -368,7 +396,7 @@ void OmniSwashPlateLess::update_test_params() {
         static float last_phase = 0.0f;
         if (phase < last_phase) {  // 周期回绕检查
                 cycle_count++;
-                if (cycle_count >= 6) {  // 执行 6 个往返
+                if (cycle_count >= cycles_target) {  // 执行 6 个往返
                         finished = true;
                 }
         }
@@ -384,28 +412,6 @@ void OmniSwashPlateLess::update_test_params() {
 
         // ======= 映射到相位角（0° → 360° → 0°）=======
         _single_modu_cmd_param.actuator_ctrls_pha_qgc = ramp * 360.0f;
-
-#elif OMNI_TEST_MODE_SELECTED == 7
-        /*Test8: us trajectory, ua phase = fixed*/
-        static float us_base = _param_omni_actuator_ctrls_us.get();
-
-        hrt_abstime now = hrt_absolute_time();
-        float t = (now - _last_increment_time) * 1e-6f;
-
-        if (!_stop_increment) {
-                _target_us = us_base + 0.25f * (t / 10.0f);
-
-                if (_target_us > 0.30f) {
-                        _target_us = 0.0f;
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
-                        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                        _stop_increment = true;  // 达到上限后停止
-                }
-        }
-
-        if (!_stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = _target_us;
-        }
 
 #endif
 

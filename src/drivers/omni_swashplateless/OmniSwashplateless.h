@@ -26,16 +26,17 @@
 
 #define OMNI_DEBUG 1
 
-// OMNI_TEST_UA_RAMP_US_0 = 0,          // Test1: ua increasing, us = 0
-// OMNI_TEST_UA_FIXED_US_RAMP = 1,      // Test2: us increasing, ua = fixed
-// OMNI_TEST_US_FIXED_UA_RAMP = 2,      // Test3: ua increasing, us = fixed
-// OMNI_TEST_PHASE_SWEEP = 3,           // Test4: phase increasing, ua us = fixed
-// OMNI_TEST_DELAY_US = 4,              // Test5: ua→us 延迟加入
-// OMNI_TEST_TRIANGLE_TRAJ_US = 5,      // Test6: us triangle wave trajectory, ua = fixed
-// OMNI_TEST_UA_US_FIXED_PHA_TRAJ = 6,  // Test7: phase triangle wave trajectory, ua us = fixed
-// OMNI_TEST_UA_PHA_FIXED_US_TRAJ = 7,  // Test8: us trajectory, ua phase = fixed
+/* Test7: Fixed ua, us, triangle wave on phase (0 → 360 → 0) until count > cycles_target
+ * OMNI_TEST_UA_RAMP_US_0           = 0,  // Test1: UA ramp up (0→max), US = 0
+ * OMNI_TEST_US_RAMP_UA_FIXED       = 1,  // Test2: US ramp up (0→max), UA = constant
+ * OMNI_TEST_UA_RAMP_US_FIXED       = 2,  // Test3: UA ramp up (0→max), US = constant
+ * OMNI_TEST_PHASE_SWEEP_FIXED_UAUS = 3,  // Test4: Phase rotates continuously, UA & US = constant
+ * OMNI_TEST_DELAY_US_AFTER_UA      = 4,  // Test5: First apply UA, then add US after delay
+ * OMNI_TEST_TRI_US_FIXED_UA_PHASE  = 5,  // Test6: Triangle wave on US (0→max→0), UA & Phase fixed
+ * OMNI_TEST_TRI_PHASE_FIXED_UA_US  = 6,  // Test7: Triangle wave on Phase (0°→360°→0°), UA & US fixed
+ */
 
-#define OMNI_TEST_MODE_SELECTED 7
+#define OMNI_TEST_MODE_SELECTED 6
 
 #define OMNI_ACTUATOR_NUM 4
 
