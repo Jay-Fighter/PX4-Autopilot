@@ -266,29 +266,29 @@ void OmniSwashPlateLess::update_test_params() {
 
 #elif OMNI_TEST_MODE_SELECTED == 3
 
-        /* Test4: Fixed ua, us, phase increment with smooth ramp until count > cycles_target
-         * phase(t) = (t / UA_RAMP_TIME) * 2PI
-         * ua(t), us(t) = constant
+        /**
+         * Test4: phase increases monotonically (0 → 2π → 4π → 6π → ...)
+         * 每 time_period 秒增加 2π
          */
-        static int cycles_target = 5.0f;
 
-        static float time_period = 10.0f;  // 10s 一圈
+        static float time_period = 10.0f;  // 10 秒转 1 圈
+        static int cycles_target = 5;      // 总共转 5 圈
 
         hrt_abstime now = hrt_absolute_time();
-
-        float t = (now - _last_increment_time) * 1e-6f;  // elapsed [s]
+        float t = (now - _last_increment_time) * 1e-6f;
 
         if (!_stop_increment) {
 
-                float count = t / time_period;  // 已旋转的“圈数”
+                // ======== 线性累计相位（弧度）========
+                float phase_rad = 2.0f * static_cast<float>(M_PI) * (t / time_period);
 
-                _target_phase = fmodf(count * 360.0f, 360.0f);  // 映射到 0~360°
+                // 输出时仍然需要转为 0~360°，避免过大角度
+                float phase_deg_mod = fmodf(phase_rad * 180.0f / static_cast<float>(M_PI), 360.0f);
 
-                // ======= 输出相位 =======
-                _single_modu_cmd_param.actuator_ctrls_pha_qgc = _target_phase;
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = phase_deg_mod;
 
-                // ======= 判定是否达到指定圈数 =======
-                if (count >= cycles_target) {
+                // ======== 判断是否完成 cycles_target 圈 ========
+                if (phase_rad >= cycles_target * 2.0f * static_cast<float>(M_PI)) {
                         _stop_increment = true;
                 }
 
@@ -296,7 +296,6 @@ void OmniSwashPlateLess::update_test_params() {
                 _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
                 _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
         }
-
 #elif OMNI_TEST_MODE_SELECTED == 4
         /*Test5: 先给定ua，1s后再叠加上us*/
         static float last_ua_param = NAN;
@@ -365,53 +364,157 @@ void OmniSwashPlateLess::update_test_params() {
         _single_modu_cmd_param.actuator_ctrls_us_qgc = ramp * us_max;
 
 #elif OMNI_TEST_MODE_SELECTED == 6
-
-        /* Test7: Fixed ua, us, triangle wave on phase (0 → 360 → 0) until count > cycles_target
-         * phase(t) = (t / UA_RAMP_TIME) * 2PI
-         * ua(t), us(t) = constant
+        /* Test4: Fixed ua, us, phase sweeps 0 → 2π → 0 smoothly (cosine-based)
+         * phase(t) = pi * (1 - cos(2*pi * t / T))
          */
 
-        // ======= 固定参数 =======
-        float T = 10.0f;             // 一个周期（秒）
-        static int cycle_count = 0;  // 已完成往返次数（0→360→0 算 1 次）
-        static int cycles_target = 5;
-        static bool finished = false;  // 完成后停止输出
+        static int cycles_target = 5;      // 扫描 5 次
+        static float time_period = 10.0f;  // 每次 10s
 
-        // ======= 当前时间 t（秒） =======
         hrt_abstime now = hrt_absolute_time();
         float t = (now - _last_increment_time) * 1e-6f;
 
-        // ======= 如果结束则归零 =======
-        if (finished) {
-                _single_modu_cmd_param.actuator_ctrls_pha_qgc = 0.0f;
-                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;  // Optional
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                return;
-        }
+        if (!_stop_increment) {
 
-        // ======= 当前相位 =======
-        float phase = fmodf(t, T);
+                float phase_t = fmodf(t, time_period);  // 一个周期内时间
+                float count = t / time_period;          // 总执行了多少周期
 
-        // ======= 检查周期是否结束 =======
-        static float last_phase = 0.0f;
-        if (phase < last_phase) {  // 周期回绕检查
-                cycle_count++;
-                if (cycle_count >= cycles_target) {  // 执行 6 个往返
-                        finished = true;
+                // ======== 平滑相位函数：0 → 2π → 0 ========
+                float phase_rad = static_cast<float>(M_PI) * (1.0f - cosf(2.0f * static_cast<float>(M_PI) * (phase_t / time_period)));
+
+                // 转为度数输出
+                float phase_deg = phase_rad * 180.0f / static_cast<float>(M_PI);
+
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = phase_deg;
+
+                // ======== 结束判定 ========
+                if (count >= cycles_target) {
+                        _stop_increment = true;
                 }
-        }
-        last_phase = phase;
 
-        // ======= 三角波计算（0→1→0）=======
-        float ramp;
-        if (phase < T * 0.5f) {
-                ramp = phase / (T * 0.5f);  // 上升：0 → 1
         } else {
-                ramp = 2.0f - (phase / (T * 0.5f));  // 下降：1 → 0
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
         }
 
-        // ======= 映射到相位角（0° → 360° → 0°）=======
-        _single_modu_cmd_param.actuator_ctrls_pha_qgc = ramp * 360.0f;
+#elif OMNI_TEST_MODE_SELECTED == 7
+        /**
+         * Test8: Fixed phase, ua(t) & us(t) increase simultaneously
+         * ua: 0 → 0.6
+         * us: 0 → 0.3
+         * phase: constant (e.g., 45 deg)
+         */
+
+        static float ua_max = 0.6f;
+        static float us_max = 0.3f;
+        static float ua_base = _param_omni_actuator_ctrls_ua.get();
+        static float us_base = _param_omni_actuator_ctrls_us.get();
+        static float ramp_time = 10.0f;  // 两者都在 20 秒内到达最大值
+
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        if (!_stop_increment) {
+
+                // ====== 线性同步递增 ======
+                float ua = ua_base + (ua_max - ua_base) * (t / ramp_time);
+                float us = us_base + (us_max - us_base) * (t / ramp_time);
+
+                // 限幅
+                if (ua > ua_max)
+                        ua = ua_max;
+                if (us > us_max)
+                        us = us_max;
+
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = ua;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = us;
+
+                // ====== 判断是否结束 ======
+                if (ua >= ua_max - 1e-4f || us >= us_max - 1e-4f) {
+                        _stop_increment = true;
+                }
+
+        } else {
+                // ====== 停止后 reset ======
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+        }
+
+#elif OMNI_TEST_MODE_SELECTED == 8
+        /**
+         * Test9: Fixed us, ua(t) & phase(t) increase simultaneously
+         * ua: ua_base → ua_max
+         * phase: 0° → 360°
+         * us: constant (us_base)
+         */
+
+        static float ua_base = _param_omni_actuator_ctrls_ua.get();
+
+        static float ua_max = 0.6f;
+        static float ramp_time = 20.0f;  // ua 和 phase 在 20 秒内同时到达最大值
+
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        // ====== 归一化进度（确保同步） ======
+        float s = t / ramp_time;
+        if (s > 1.0f)
+                _stop_increment = true;
+
+        if (!_stop_increment) {
+
+                // ====== ua 同步递增 ======
+                float ua = ua_base + (ua_max - ua_base) * s;
+
+                // ====== phase 同步递增 ======
+                float phase_deg = 360.0f * s;  // 恰好 ramp_time 秒转完一圈
+
+                // ====== 输出 ======
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = ua;
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = phase_deg;
+
+        } else {
+                // ====== reset ======
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+        }
+
+#elif OMNI_TEST_MODE_SELECTED == 9
+        /**
+         * Test10: Fixed ua, us(t) & phase(t) increase simultaneously
+         * us: 0 → us_max
+         * phase: 0° → 360° (one full rotation)
+         * ua: constant
+         */
+
+        static float us_max = 0.3f;
+        static float ramp_time = 20.0f;     // us 和 phase 同步在 20s 内完成
+
+        hrt_abstime now = hrt_absolute_time();
+        float t = (now - _last_increment_time) * 1e-6f;
+
+        // ====== 归一化进度（确保同步） ======
+        float s = t / ramp_time;
+        if (s > 1.0f)
+                _stop_increment = true;
+
+        if (!_stop_increment) {
+
+                // ====== us 线性递增 ======
+                float us = us_max * s;
+
+                // ====== phase 线性递增 ======
+                float phase_deg = 360.0f * s;
+
+                // ====== 输出 ======
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = us;
+                _single_modu_cmd_param.actuator_ctrls_pha_qgc = phase_deg;
+
+        } else {
+                // ====== reset ======
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+        }
 
 #endif
 
