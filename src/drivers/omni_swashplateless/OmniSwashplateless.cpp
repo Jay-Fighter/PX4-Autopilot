@@ -210,26 +210,36 @@ void OmniSwashPlateLess::update_test_params() {
 
         static float us_base = _param_omni_actuator_ctrls_us.get();
 
-        static float us_max = 0.25f;
+        static float us_max = 0.30f;
 
         static float us_ramp_time = 15.0f;  // 15s arrive at max value
 
+        static float hold_time = 2.0f;
+
         hrt_abstime now = hrt_absolute_time();
         float t = (now - _last_increment_time) * 1e-6f;
+        if (t < hold_time) {
 
-        if (!_stop_increment) {
-                _target_us = us_base + us_max * (t / us_ramp_time);
+                _single_modu_cmd_param.actuator_ctrls_ua_qgc = _single_modu_cmd_param.actuator_ctrls_ua_qgc;
 
-                if (_target_us > 0.31f) {
-                        _target_us = 0.0f;
-                        _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
-                        _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
-                        _stop_increment = true;  // 达到上限后停止
+        } else {
+                // ====== 归一化进度（确保同步） ======
+                float s = (t - hold_time) / us_ramp_time;
+
+                if (!_stop_increment) {
+                        _target_us = us_base + (us_max - us_base) * s;
+
+                        if (_target_us > 0.31f) {
+                                _target_us = 0.0f;
+                                _single_modu_cmd_param.actuator_ctrls_ua_qgc = 0.05f;
+                                _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
+                                _stop_increment = true;  // 达到上限后停止
+                        }
                 }
-        }
 
-        if (!_stop_increment) {
-                _single_modu_cmd_param.actuator_ctrls_us_qgc = _target_us;
+                if (!_stop_increment) {
+                        _single_modu_cmd_param.actuator_ctrls_us_qgc = _target_us;
+                }
         }
 
 #elif OMNI_TEST_MODE_SELECTED == 2
