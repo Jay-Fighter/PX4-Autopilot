@@ -511,7 +511,7 @@ void OmniSwashPlateLess::update_test_params() {
                         float ua = ua_base + (ua_max - ua_base) * s;
 
                         // ====== phase 同步递增 ======
-                        float phase_deg = static_cast<float>(M_PI) * (1.0f - cosf(static_cast<float>(M_PI) * s));  // 0→2π
+                        float phase_deg = static_cast<float>(M_PI) * (1.0f - cosf(static_cast<float>(M_PI) * s)) * RAD_2_DEG;  // to degree
 
                         // ====== 输出 ======
                         _single_modu_cmd_param.actuator_ctrls_ua_qgc = ua;
@@ -556,7 +556,7 @@ void OmniSwashPlateLess::update_test_params() {
                         float us = us_max * s;
 
                         // ====== phase 同步递增 ======
-                        float phase_deg = static_cast<float>(M_PI) * (1.0f - cosf(static_cast<float>(M_PI) * s));  // 0→2π
+                        float phase_deg = static_cast<float>(M_PI) * (1.0f - cosf(static_cast<float>(M_PI) * s)) * RAD_2_DEG;  // to degree
 
                         // ====== 输出 ======
                         _single_modu_cmd_param.actuator_ctrls_us_qgc = us;
