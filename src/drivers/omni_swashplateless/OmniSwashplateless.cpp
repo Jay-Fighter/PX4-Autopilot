@@ -568,6 +568,64 @@ void OmniSwashPlateLess::update_test_params() {
                         _single_modu_cmd_param.actuator_ctrls_us_qgc = 0.0f;
                 }
         }
+#elif OMNI_TEST_MODE_SELECTED == 10
+        /**
+         * Test11: Dynamic us, ua(t) & phase(t) increase simultaneously
+         */
+
+        // ===== 你给定的序列（示例，替换成你的数组）=====
+        static constexpr int kN = 7;
+        static constexpr float kUaSeq[kN] = {0.45f, 0.45f, 0.3f, 0.3f, 0.5f, 0.45f, 0.05f};
+        static constexpr float kUsSeq[kN] = {0.0, 0.25, 0.15, 0.25, 0.15, 0.25, 0.0};
+        static constexpr float kPhaseSeq[kN] = {0.f, 45.f, 90.f, 135.f, 180.f, 225.f, 0.0f};
+
+        // ===== 时序参数 =====
+        static constexpr hrt_abstime kGroupDuration = 2_s;  // 每组 2s
+        static constexpr hrt_abstime kUsDelay = 1_s;        // 仅第 1 组：us 延迟 1s
+
+        // ===== 运行状态 =====
+        static bool _seq_started = false;
+        static int _seq_idx = 0;
+        static hrt_abstime _group_start_time = 0;
+
+        const hrt_abstime now = hrt_absolute_time();
+
+        // 1) 首次启动：进入第 0 组
+        if (!_seq_started) {
+                _seq_started = true;
+                _seq_idx = 0;
+                _group_start_time = now;
+        }
+
+        // 2) 组切换：每 2s 前进一组
+        while ((now - _group_start_time) >= kGroupDuration) {
+                _group_start_time += kGroupDuration;
+
+                if (_seq_idx < (kN - 1)) {
+                        _seq_idx++;
+                } else {
+                        // 到最后一组后不再推进
+                        break;
+                }
+        }
+
+        // 3) 当前组的目标值
+        const float ua_cmd = kUaSeq[_seq_idx];
+        const float us_cmd = kUsSeq[_seq_idx];
+        const float phase_cmd = kPhaseSeq[_seq_idx];
+
+        // 4) 输出：第 0 组 us 延迟 1s；其余组同步切换
+        const hrt_abstime t_in_group = now - _group_start_time;
+
+        float us_out = us_cmd;
+        if ((_seq_idx == 0) && (t_in_group < kUsDelay)) {
+                us_out = 0.0f;
+        }
+
+        // 5) 下发
+        _single_modu_cmd_param.actuator_ctrls_ua_qgc = ua_cmd;
+        _single_modu_cmd_param.actuator_ctrls_us_qgc = us_out;
+        _single_modu_cmd_param.actuator_ctrls_pha_qgc = phase_cmd;
 
 #endif
 

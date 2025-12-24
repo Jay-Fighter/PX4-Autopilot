@@ -34,9 +34,10 @@
  * OMNI_TEST_DELAY_US_AFTER_UA      = 4,  // Test5: First apply UA, then add US after delay
  * OMNI_TEST_TRI_US_FIXED_UA_PHASE  = 5,  // Test6: Triangle wave on US (0→max→0), UA & Phase fixed
  * OMNI_TEST_TRI_PHASE_FIXED_UA_US  = 6,  // Test7: Triangle wave on Phase (0°→360°→0°), UA & US fixed
+ * OMNI_TEST_TRI_PHASE_FIXED_UA_US  = 10,  // Test10: Triangle wave on Phase (0°→360°→0°), UA & US fixed
  */
 
-#define OMNI_TEST_MODE_SELECTED 1
+#define OMNI_TEST_MODE_SELECTED 10
 
 #define OMNI_ACTUATOR_NUM 4
 
