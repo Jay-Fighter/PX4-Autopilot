@@ -574,13 +574,13 @@ void OmniSwashPlateLess::update_test_params() {
          */
 
         // ===== 你给定的序列（示例，替换成你的数组）=====
-        static constexpr int kN = 7;
-        static constexpr float kUaSeq[kN] = {0.45f, 0.45f, 0.3f, 0.3f, 0.5f, 0.45f, 0.05f};
-        static constexpr float kUsSeq[kN] = {0.0, 0.25, 0.15, 0.25, 0.15, 0.25, 0.0};
-        static constexpr float kPhaseSeq[kN] = {0.f, 45.f, 90.f, 135.f, 180.f, 225.f, 0.0f};
+        static constexpr int kN = 8;
+        static constexpr float kUaSeq[kN] = {0.45f, 0.45f, 0.4f, 0.45f, 0.5f, 0.45f, 0.45f,0.05f};
+        static constexpr float kUsSeq[kN] = {0.0, 0.25, 0.10, 0.25, 0.10, 0.25, 0.25,0.0};
+        static constexpr float kPhaseSeq[kN] = {0.f, 45.f, 90.f, 135.f, 180.f, 225.f, 45.f,0.0f};
 
         // ===== 时序参数 =====
-        static constexpr hrt_abstime kGroupDuration = 2_s;  // 每组 2s
+        static constexpr hrt_abstime kGroupDuration = 4_s;  // 每组 2s
         static constexpr hrt_abstime kUsDelay = 1_s;        // 仅第 1 组：us 延迟 1s
 
         // ===== 运行状态 =====
