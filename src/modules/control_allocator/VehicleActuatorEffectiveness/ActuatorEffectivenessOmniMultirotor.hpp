@@ -38,6 +38,7 @@
 
 #include <uORB/Publication.hpp>
 #include <uORB/topics/omni_actuator_setpoint.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
 
 class ActuatorEffectivenessOmniMultirotor : public ModuleParams, public ActuatorEffectiveness {
        public:
@@ -60,5 +61,5 @@ class ActuatorEffectivenessOmniMultirotor : public ModuleParams, public Actuator
 
        protected:
         ActuatorEffectivenessRotors _mc_rotors;
-	uORB::Publication<omni_actuator_setpoint_s> _omni_actuator_setpoint_pub{ORB_ID(omni_actuator_setpoint)};
+        uORB::Publication<omni_actuator_setpoint_s> _omni_actuator_setpoint_pub{ORB_ID(omni_actuator_setpoint)};
 };

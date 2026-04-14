@@ -199,7 +199,7 @@ private:
 	matrix::Vector3f _thrust_sp;
 	bool _publish_controls{true};
 
-	// Reflects motor failures that are currently handled, not motor failures that are reported.
+    	// Reflects motor failures that are currently handled, not motor failures that are reported.
 	// For example, the system might report two motor failures, but only the first one is handled by CA
 	uint16_t _handled_motor_failure_bitmask{0};
 

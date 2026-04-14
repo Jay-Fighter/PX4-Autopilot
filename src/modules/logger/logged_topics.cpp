@@ -45,6 +45,16 @@ using namespace px4::logger;
 
 void LoggedTopics::add_default_topics()
 {
+	//add by jay
+	add_topic("omni_outputs_cmd", 100);
+	add_topic("omni_outputs_cmd_param", 100);
+	add_topic("omni_motor_telemetry");
+	// add_topic_multi("esc_status", 100, 2);
+	add_topic("actuator_outputs", 100);
+	add_topic("omni_outputs_cmd_frame", 100);
+	add_topic("omni_outputs_cmd_groups", 100);
+	add_topic("omni_actuator_setpoint", 100);
+	// end
 	add_optional_topic("ackermann_velocity_setpoint", 100);
 	add_topic("action_request");
 	add_topic("actuator_armed");
@@ -297,6 +307,10 @@ void LoggedTopics::add_debug_topics()
 	// add_topic_multi("esc_status", 100, 2);
 	add_topic("actuator_outputs", 100);
 	add_topic("omni_outputs_cmd_frame", 100);
+	add_topic("omni_outputs_cmd_groups");
+	add_topic("omni_actuator_setpoint");
+	add_topic("omni_motors_telemetry");
+	// end
 
 }
 

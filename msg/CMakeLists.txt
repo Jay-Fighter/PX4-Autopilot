@@ -260,9 +260,10 @@ set(msg_files
     versioned/VehicleStatus.msg
     versioned/VtolVehicleStatus.msg
     # add by jay
-    omni_swashplateless/OmniModulationCmd.msg
     omni_swashplateless/OmniOutputsCmdParam.msg
     omni_swashplateless/OmniMotorTelemetry.msg
+    omni_swashplateless/OmniMotorsTelemetry.msg
+    omni_swashplateless/OmniOutputsCmdGroups.msg
     omni_swashplateless/OmniOutputsCmd.msg
     omni_swashplateless/OmniOutputsCmdFrame.msg
     omni_swashplateless/OmniActuatorSetpoint.msg

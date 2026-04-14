@@ -37,6 +37,7 @@
 
 #include "PositionControl.hpp"
 #include "ControlMath.hpp"
+#include "px4_platform_common/log.h"
 #include <float.h>
 #include <mathlib/mathlib.h>
 #include <px4_platform_common/defines.h>
@@ -145,7 +146,7 @@ void PositionControl::_velocityControl(const float dt)
 	// PID velocity control
 	Vector3f vel_error = _vel_sp - _vel;
 	Vector3f acc_sp_velocity = vel_error.emult(_gain_vel_p) + _vel_int - _vel_dot.emult(_gain_vel_d);
-
+	// PX4_INFO("acc_sp_velocity :%f, %f, %f", (double)acc_sp_velocity(0), (double)acc_sp_velocity(1), (double)acc_sp_velocity(2));
 	// No control input from setpoints or corresponding states which are NAN
 	ControlMath::addIfNotNanVector3f(_acc_sp, acc_sp_velocity);
 
@@ -219,6 +220,7 @@ void PositionControl::_accelerationControl()
 	const float cos_ned_body = (Vector3f(0, 0, 1).dot(body_z));
 	const float collective_thrust = math::min(thrust_ned_z / cos_ned_body, -_lim_thr_min);
 	_thr_sp = body_z * collective_thrust;
+	// PX4_INFO("body_z :%f, %f, %f", (double)body_z(0), (double)body_z(1), (double)body_z(2));
 }
 
 bool PositionControl::_inputValid()
@@ -261,10 +263,12 @@ void PositionControl::getLocalPositionSetpoint(vehicle_local_position_setpoint_s
 	local_position_setpoint.vz = _vel_sp(2);
 	_acc_sp.copyTo(local_position_setpoint.acceleration);
 	_thr_sp.copyTo(local_position_setpoint.thrust);
+	// PX4_INFO("_thr_sp: %.3f, %.3f, %.3f", (double)_thr_sp(0), (double)_thr_sp(1), (double)_thr_sp(2));
 }
 
 void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const
 {
-	ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
+	// ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
+	ControlMath::thrustToAttitude(_thr_sp, 0.0f, attitude_setpoint);
 	attitude_setpoint.yaw_sp_move_rate = _yawspeed_sp;
 }

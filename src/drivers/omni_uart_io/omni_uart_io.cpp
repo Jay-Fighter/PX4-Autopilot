@@ -195,6 +195,7 @@ void OmniSerialInterface::ProcessSerialRx() {
         // === 1. 从串口读取数据 ===
         ssize_t bytes_read = ::read(_uart_fd, _rx_buf, _bytes_available);
 
+#ifdef OMNI_DEBUG
         if (bytes_read < FRAME_LEN_RX) {
                 // perf_count(_comms_errors);
                 return;
@@ -221,50 +222,63 @@ void OmniSerialInterface::ProcessSerialRx() {
         }
 
         const uint8_t* frame = &_rx_buf[start_index];
-
-        // === 4. 校验帧尾是否正确 (0x0D 0x0A) ===
-        if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
-                // PX4_WARN("Invalid frame tail: 0x%02X 0x%02X", frame[FRAME_LEN_RX - 2], frame[FRAME_LEN_RX - 1]);
-                // perf_count(_comms_errors);
+        parseSingleRxFrame(frame, true, &_motor_telemetry, true);
+#else
+        if (bytes_read < FRAME_LEN_OUTER_RX) {
                 return;
         }
 
-        // === 5. 校验和验证 ===
-        uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_RX - 3);
-        uint8_t recv_sum = frame[FRAME_LEN_RX - 3];
+        int start_index = -1;
+        for (ssize_t i = 0; i < bytes_read - 1; i++) {
+                if (_rx_buf[i] == FRAME_OUTER_RX_HEADER_1 && _rx_buf[i + 1] == FRAME_OUTER_RX_HEADER_2) {
+                        start_index = i;
+                        break;
+                }
+        }
+
+        if (start_index < 0) {
+                return;
+        }
+
+        if (bytes_read - start_index < FRAME_LEN_OUTER_RX) {
+                return;
+        }
+
+        const uint8_t* frame = &_rx_buf[start_index];
+
+        if (frame[FRAME_LEN_OUTER_RX - 2] != FRAME_OUTER_RX_END_1 || frame[FRAME_LEN_OUTER_RX - 1] != FRAME_OUTER_RX_END_2) {
+                return;
+        }
+
+        uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_OUTER_RX - 3);
+        uint8_t recv_sum = frame[FRAME_LEN_OUTER_RX - 3];
 
         if (check_sum != recv_sum) {
-                // PX4_WARN("Checksum mismatch calc=0x%02X recv=0x%02X", check_sum, recv_sum);
-                // perf_count(_comms_errors);
                 return;
         }
 
-        // === 6. 解析字段 ===
-        uint8_t motor_index = frame[2];
-        float motor_pos = bytesToFloat(&frame[4]);
-        uint16_t motor_vel = bytesToUint16(&frame[8]);
-        uint16_t ua = bytesToUint16(&frame[10]);
-        uint16_t us = bytesToUint16(&frame[12]);
-        uint16_t u = bytesToUint16(&frame[14]);
-        float phase = bytesToFloat(&frame[16]);
-        float lag_angle = bytesToFloat(&frame[20]);
-        uint16_t esc_voltage = bytesToUint16(&frame[24]);
-        uint16_t esc_current = bytesToUint16(&frame[26]);
-
-        _motor_telemetry.index = motor_index;
-        _motor_telemetry.obs_angle_deg = motor_pos * RAD_2_DEG;
-        _motor_telemetry.obs_angle_rad = motor_pos;
-        _motor_telemetry.obs_rpm = static_cast<float>(motor_vel) * 100.0f / (14.0f);  // convert erpm to rpm
-        _motor_telemetry.throttle_ua = static_cast<float>(ua);
-        _motor_telemetry.throttle_us = static_cast<float>(us);
-        _motor_telemetry.throttle_u = static_cast<float>(u);
-        _motor_telemetry.throttle_phase = phase;
-        _motor_telemetry.throttle_lag_angle = lag_angle;
-        _motor_telemetry.esc_voltage = static_cast<float>(esc_voltage) * 0.01f;
-        _motor_telemetry.esc_current = static_cast<float>(esc_current) * 0.01f;
-        _motor_telemetry.timestamp = hrt_absolute_time();
-
-        _motor_telemetry_pub.publish(_motor_telemetry);
+        omni_motors_telemetry_s motors_telemetry{};
+        const uint8_t* subframe = frame + 2;
+        for (int i = 0; i < 4; i++) {
+                omni_motor_telemetry_s single{};
+                if (parseSingleRxFrame(subframe, false, &single, false)) {
+                        motors_telemetry.index[i] = i+1;
+                        motors_telemetry.obs_angle_rad[i] = single.obs_angle_rad;
+                        motors_telemetry.obs_angle_deg[i] = single.obs_angle_deg;
+                        motors_telemetry.obs_rpm[i] = single.obs_rpm;
+                        motors_telemetry.throttle_ua[i] = single.throttle_ua;
+                        motors_telemetry.throttle_us[i] = single.throttle_us;
+                        motors_telemetry.throttle_u[i] = single.throttle_u;
+                        motors_telemetry.throttle_phase[i] = single.throttle_phase;
+                        motors_telemetry.throttle_lag_angle[i] = single.throttle_lag_angle;
+                        motors_telemetry.esc_voltage[i] = single.esc_voltage;
+                        motors_telemetry.esc_current[i] = single.esc_current;
+                }
+                subframe += FRAME_LEN_RX;
+        }
+        motors_telemetry.timestamp = hrt_absolute_time();
+        _motors_telemetry_pub.publish(motors_telemetry);
+#endif
 
         // === 打印完整帧数据（十六进制） ===
         //     PX4_INFO_RAW(" [ProcessSerialRx]: Received From Motor frame (%d bytes): ", FRAME_LEN_RX);
@@ -297,6 +311,7 @@ void OmniSerialInterface::ProcessSerialTx() {
 
         ReOpenSerial();
 
+#ifdef OMNI_DEBUG
         if (_param_omni_frame_enable_flag.get() == PX4_OK) {
                 setMotorZeroPosAndRev();
                 return;
@@ -318,6 +333,37 @@ void OmniSerialInterface::ProcessSerialTx() {
                         }
                 }
         }
+#else
+        if (_param_omni_frame_enable_flag.get() == PX4_OK) {
+                omni_outputs_cmd_groups_s zero_cmd{};
+                for (int i = 0; i < 4; i++) {
+                        zero_cmd.index[i] = i;
+                }
+                uint8_t frame_[FRAME_LEN_OUTER_TX];
+                uint8_t frame_len_ = 0;
+                packThrottleCmdGroup(zero_cmd, frame_, frame_len_);
+                int ret = ::write(_uart_fd, frame_, frame_len_);
+                if (ret != frame_len_) {
+                        perf_count(_comms_errors);
+                        PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+                        tcflush(_uart_fd, TCOFLUSH);
+                }
+                return;
+        }
+
+        omni_outputs_cmd_groups_s output_cmd_groups{0};
+        if (_output_cmd_groups_sub.update(&output_cmd_groups)) {
+                uint8_t frame_[FRAME_LEN_OUTER_TX];
+                uint8_t frame_len_ = 0;
+                packThrottleCmdGroup(output_cmd_groups, frame_, frame_len_);
+                int ret = ::write(_uart_fd, frame_, frame_len_);
+                if (ret != frame_len_) {
+                        perf_count(_comms_errors);
+                        PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+                        tcflush(_uart_fd, TCOFLUSH);
+                }
+        }
+#endif
 }
 
 uint8_t OmniSerialInterface::calcChecksum(const uint8_t* data, size_t len) {
@@ -398,6 +444,80 @@ void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint
         omni_outputs_cmd_frame.encoder_reverse_flag = _param_encoder_rev_flag.get();
         omni_outputs_cmd_frame.timestamp = hrt_absolute_time();
         _omni_outputs_cmd_frame_pub.publish(omni_outputs_cmd_frame);
+}
+
+void OmniSerialInterface::packThrottleCmdGroup(const omni_outputs_cmd_groups_s& packet, uint8_t* frame, uint8_t& frame_len) {
+        frame[frame_len++] = FRAME_OUTER_TX_HEADER_1;
+        frame[frame_len++] = FRAME_OUTER_TX_HEADER_2;
+
+        for (int i = 0; i < 4; i++) {
+                uint8_t sub_frame[FRAME_LEN_TX];
+                uint8_t sub_len = 0;
+                omni_outputs_cmd_s single_cmd{};
+                single_cmd.index = packet.index[i];
+                single_cmd.throttle_ua = packet.throttle_ua[i];
+                single_cmd.throttle_us = packet.throttle_us[i];
+                single_cmd.throttle_ctrls_phase = packet.throttle_ctrls_phase[i];
+                single_cmd.throttle_ctrls_lag_angle = packet.throttle_ctrls_lag_angle[i];
+                packThrottleCmd(single_cmd, sub_frame, sub_len);
+                memcpy(frame + frame_len, sub_frame, sub_len);
+                frame_len += sub_len;
+        }
+
+        uint8_t check_sum = calcChecksum(&frame[0], frame_len);
+        frame[frame_len++] = check_sum;
+        frame[frame_len++] = FRAME_OUTER_TX_END_1;
+        frame[frame_len++] = FRAME_OUTER_TX_END_2;
+}
+
+bool OmniSerialInterface::parseSingleRxFrame(const uint8_t* frame, bool check_checksum, omni_motor_telemetry_s* out,
+                                             bool publish_single) {
+        if (frame[0] != FRAME_HEADER_1 || frame[1] != FRAME_HEADER_2) {
+                return false;
+        }
+
+        if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
+                return false;
+        }
+
+        if (check_checksum) {
+                uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_RX - 3);
+                uint8_t recv_sum = frame[FRAME_LEN_RX - 3];
+
+                if (check_sum != recv_sum) {
+                        return false;
+                }
+        }
+
+        uint8_t motor_index = frame[2];
+        float motor_pos = bytesToFloat(&frame[4]);
+        uint16_t motor_vel = bytesToUint16(&frame[8]);
+        uint16_t ua = bytesToUint16(&frame[10]);
+        uint16_t us = bytesToUint16(&frame[12]);
+        uint16_t u = bytesToUint16(&frame[14]);
+        float phase = bytesToFloat(&frame[16]);
+        float lag_angle = bytesToFloat(&frame[20]);
+        uint16_t esc_voltage = bytesToUint16(&frame[24]);
+        uint16_t esc_current = bytesToUint16(&frame[26]);
+
+        omni_motor_telemetry_s* target = out ? out : &_motor_telemetry;
+        target->index = motor_index;
+        target->obs_angle_deg = motor_pos * RAD_2_DEG;
+        target->obs_angle_rad = motor_pos;
+        target->obs_rpm = static_cast<float>(motor_vel) * 100.0f / (14.0f);  // convert erpm to rpm
+        target->throttle_ua = static_cast<float>(ua);
+        target->throttle_us = static_cast<float>(us);
+        target->throttle_u = static_cast<float>(u);
+        target->throttle_phase = phase;
+        target->throttle_lag_angle = lag_angle;
+        target->esc_voltage = static_cast<float>(esc_voltage) * 0.01f;
+        target->esc_current = static_cast<float>(esc_current) * 0.01f;
+        target->timestamp = hrt_absolute_time();
+
+        if (publish_single) {
+                _motor_telemetry_pub.publish(*target);
+        }
+        return true;
 }
 
 void OmniSerialInterface::print_info() {

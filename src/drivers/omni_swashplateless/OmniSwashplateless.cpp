@@ -1,12 +1,12 @@
 #include "OmniSwashplateless.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cmath>
 #include <cstdio>
 #include "commander/Commander.hpp"
 #include "drivers/drv_hrt.h"
 #include "mathlib/math/Limits.hpp"
 #include "px4_platform_common/log.h"
-#include "uORB/topics/pwm_input.h"
 
 constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
 constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
@@ -104,15 +104,44 @@ void OmniSwashPlateLess::modulationCmdCal() {
 
 #endif
 
+#ifndef OMNI_DEBUG
         // TODO:另一个调制指令则通过姿态环的控制输出来计算，平均升力，相位角
 
         omni_actuator_setpoint_s omni_actuator_setpoint;
 
         if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
-                for (size_t index = 0; index < OMNI_ACTUATOR_NUM; index++) {}
+                limit_and_update_outputs(omni_actuator_setpoint);
         }
+#endif
 }
 
+void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& output) {
+
+        for (size_t i = 0; i < output.num_groups; i++) {
+                float ua = std::fabs(output.fz[i]) * ACTUATOR_CONTROLS_TO_DSHOT;
+                float us = sqrtf((output.fx[i] * output.fx[i] + output.fy[i] * output.fy[i]) / 2.0f) * ACTUATOR_CONTROLS_TO_DSHOT;
+
+                float phase = atan2f(output.fy[i], output.fx[i]);
+                if (phase < 0.0f) {
+                        phase += 2.0f * static_cast<float>(M_PI);
+                }
+
+                _omni_outputs_cmd_groups.throttle_ua[i] = math::constrain(ua, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
+
+                _omni_outputs_cmd_groups.throttle_us[i] = math::constrain(us, 0.0f, us_2_ua_ratio_max * _omni_outputs_cmd_groups.throttle_ua[i]);
+
+                _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = acosf(std::fabs(output.fz[i]) / output.f[i]);
+
+                _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = phase;
+
+                _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = _single_modu_cmd_param.motor_lag_angle_qgc;
+
+                _omni_outputs_cmd_groups.index[i] = i;
+        }
+        _omni_outputs_cmd_groups.timestamp = hrt_absolute_time();
+
+        _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
+}
 void OmniSwashPlateLess::limit_and_update_outputs() {
 
         // limit throttle ua
@@ -575,9 +604,9 @@ void OmniSwashPlateLess::update_test_params() {
 
         // ===== 你给定的序列（示例，替换成你的数组）=====
         static constexpr int kN = 8;
-        static constexpr float kUaSeq[kN] = {0.45f, 0.45f, 0.4f, 0.45f, 0.5f, 0.45f, 0.45f,0.05f};
-        static constexpr float kUsSeq[kN] = {0.0, 0.25, 0.10, 0.25, 0.10, 0.25, 0.25,0.0};
-        static constexpr float kPhaseSeq[kN] = {0.f, 45.f, 90.f, 135.f, 180.f, 225.f, 45.f,0.0f};
+        static constexpr float kUaSeq[kN] = {0.45f, 0.45f, 0.4f, 0.45f, 0.5f, 0.45f, 0.45f, 0.05f};
+        static constexpr float kUsSeq[kN] = {0.0, 0.25, 0.10, 0.25, 0.10, 0.25, 0.25, 0.0};
+        static constexpr float kPhaseSeq[kN] = {0.f, 45.f, 90.f, 135.f, 180.f, 225.f, 45.f, 0.0f};
 
         // ===== 时序参数 =====
         static constexpr hrt_abstime kGroupDuration = 4_s;  // 每组 2s

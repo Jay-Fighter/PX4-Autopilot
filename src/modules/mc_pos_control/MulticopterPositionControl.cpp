@@ -431,7 +431,7 @@ void MulticopterPositionControl::Run()
 						   _vehicle_control_mode.flag_multicopter_position_control_enabled)) {
 			_goto_control.update(dt, states.position, states.yaw);
 		}
-
+		// add by jayjie:模块从 trajectory_setpoint 更新 _setpoint
 		_trajectory_setpoint_sub.update(&_setpoint);
 
 		adjustSetpointForEKFResets(vehicle_local_position, _setpoint);

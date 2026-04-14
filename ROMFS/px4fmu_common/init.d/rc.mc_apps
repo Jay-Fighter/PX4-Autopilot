@@ -36,3 +36,8 @@ mc_pos_control start
 # Start Multicopter Land Detector.
 #
 land_detector start multicopter
+
+# # add by jay
+# sleep 3
+# omni_swashplateless start
+# # end

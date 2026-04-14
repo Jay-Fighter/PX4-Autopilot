@@ -12,19 +12,20 @@
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
+#include <stddef.h>
 #include <uORB/uORB.h>
-#include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/actuator_test.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/omni_outputs_cmd_groups.h>
 #include <uORB/topics/omni_outputs_cmd.h>
 #include <uORB/topics/omni_outputs_cmd_param.h>
 #include <uORB/topics/omni_actuator_setpoint.h>
 
-#define OMNI_DEBUG 1
+#include "../omni_common/omni_debug.h"
 
 /* Test7: Fixed ua, us, triangle wave on phase (0 → 360 → 0) until count > cycles_target
  * OMNI_TEST_UA_RAMP_US_0           = 0,  // Test1: UA ramp up (0→max), US = 0
@@ -43,6 +44,7 @@
 
 constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
+constexpr float us_2_ua_ratio_max = 0.25;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)
 #define THROTTLE_MAX (1800)
 #define THROTTLE_MIN (0)
@@ -73,6 +75,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
         void modulationCmdCal();
 
+        void limit_and_update_outputs(omni_actuator_setpoint_s& output);
+
         void limit_and_update_outputs();
 
         void reset_throttle_output();
@@ -86,7 +90,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         /*Variable Definition*/
         omni_outputs_cmd_s _single_output_cmd{0};
         omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
-        int32_t _encoder_rot_dir{0};                         // encoder rotation direction
+        omni_outputs_cmd_groups_s _omni_outputs_cmd_groups{0};
+        int32_t _encoder_rot_dir{0};  // encoder rotation direction
 
         /*uORB Subscriber*/
         uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
@@ -96,6 +101,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         /*uORB Publisher*/
         uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
         uORB::Publication<omni_outputs_cmd_param_s> _single_output_cmd_param_pub{ORB_ID(omni_outputs_cmd_param)};
+        uORB::Publication<omni_outputs_cmd_groups_s> _omni_outputs_cmd_groups_pub{ORB_ID(omni_outputs_cmd_groups)};
 
         // Performance (perf) counters
         perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
@@ -108,12 +114,9 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         float _target_us{0.0f};
         float _target_phase{0.0f};
 
-        DEFINE_PARAMETERS(
-#ifdef OMNI_DEBUG
-            (ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua, (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
-            (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-            (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias
-#endif
-        )
+        DEFINE_PARAMETERS((ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
+                          (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
+                          (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
+                          (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias)
 };
 #endif

@@ -174,9 +174,9 @@ ControlAllocationPseudoInverse::normalizeControlAllocationMatrix()
 			}
 		}
 	}
-	PX4_INFO("Control allocation matrix:");
-	PX4_INFO("  Mixer.T =");
-	_mix.print();
+// 	PX4_INFO("Control allocation matrix:");
+// 	PX4_INFO("  Mixer.T =");
+// 	_mix.print();
 }
 
 void

@@ -416,9 +416,9 @@ ControlAllocator::Run()
 		c[0](0) = 0.0f;
 		c[0](1) = 0.0f;
 		c[0](2) = 0.0f;
-		c[0](3) = 0.4f;
-		c[0](4) = 0.0f;
-		c[0](5) = 0.8f;
+		c[0](3) = 0.1f;
+		c[0](4) = 0.1f;
+		c[0](5) = -0.7f;
 
 		if (_num_control_allocation > 1) {
 			if (_vehicle_torque_setpoint1_sub.copy(&vehicle_torque_setpoint)) {

@@ -32,6 +32,7 @@
  ****************************************************************************/
 
 #include "ActuatorEffectivenessOmniMultirotor.hpp"
+#include "px4_platform_common/log.h"
 
 using namespace matrix;
 
@@ -105,16 +106,35 @@ bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& 
         return motors_added_successfully;
 }
 
+// bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& configuration, EffectivenessUpdateReason external_update) {
+//         if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
+//                 return false;
+//         }
+//         // Motors
+//         const bool rotors_added_successfully = _mc_rotors.addActuators(configuration);
+
+//         return rotors_added_successfully;
+// }
+
 void ActuatorEffectivenessOmniMultirotor::updateSetpoint(const matrix::Vector<float, NUM_AXES>& control_sp, int matrix_index,
                                                          ActuatorVector& actuator_sp, const matrix::Vector<float, NUM_ACTUATORS>& actuator_min,
                                                          const matrix::Vector<float, NUM_ACTUATORS>& actuator_max) {
-        omni_actuator_setpoint_s omni_actuator_sp;
+        omni_actuator_setpoint_s omni_actuator_sp{0};
         for (int index = 0; index < 4; index++) {
                 int base = index * 3;
                 omni_actuator_sp.control[base + 0] = actuator_sp(base + 0);
                 omni_actuator_sp.control[base + 1] = actuator_sp(base + 1);
                 omni_actuator_sp.control[base + 2] = actuator_sp(base + 2);
+
+                omni_actuator_sp.fx[index] = actuator_sp(base + 0);
+                omni_actuator_sp.fy[index] = actuator_sp(base + 1);
+                omni_actuator_sp.fz[index] = actuator_sp(base + 2);
+                omni_actuator_sp.f[index] =
+                    sqrtf(omni_actuator_sp.fx[index] * omni_actuator_sp.fx[index] + omni_actuator_sp.fy[index] * omni_actuator_sp.fy[index] +
+                          omni_actuator_sp.fz[index] * omni_actuator_sp.fz[index]);
+                omni_actuator_sp.num_groups++;
                 // PX4_INFO("[OmniMotor%d] Fx=%.3f Fy=%.3f Fz=%.3f", index + 1, (double)Fx, (double)Fy, (double)Fz);
         }
+        omni_actuator_sp.timestamp = hrt_absolute_time();
         _omni_actuator_setpoint_pub.publish(omni_actuator_sp);
 }

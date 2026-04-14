@@ -40,8 +40,12 @@
 #include <uORB/SubscriptionInterval.hpp>
 
 #include <uORB/topics/omni_motor_telemetry.h>
+#include <uORB/topics/omni_motors_telemetry.h>
 #include <uORB/topics/omni_outputs_cmd.h>
+#include <uORB/topics/omni_outputs_cmd_groups.h>
 #include <uORB/topics/omni_outputs_cmd_frame.h>
+
+#include "../omni_common/omni_debug.h"
 #include <uORB/topics/parameter_update.h>
 
 #include <containers/Array.hpp>
@@ -51,12 +55,22 @@
 #define FRAME_HEADER_2 0xCD
 #define FRAME_END_1 0x0D
 #define FRAME_END_2 0x0A
+#define FRAME_OUTER_TX_HEADER_1 0x55
+#define FRAME_OUTER_TX_HEADER_2 0xAA
+#define FRAME_OUTER_TX_END_1 0xAA
+#define FRAME_OUTER_TX_END_2 0x55
+#define FRAME_OUTER_RX_HEADER_1 0x55
+#define FRAME_OUTER_RX_HEADER_2 0xBB
+#define FRAME_OUTER_RX_END_1 0xBB
+#define FRAME_OUTER_RX_END_2 0x55
 #define MOTOR_INIT_DISABLED 0x00  // 电机未进行初始化设置
 #define MOTOR_INIT_ENABLED 0x01   // 电机初始化设置完成
 
 // Packet length based on the protocol defined
-const ssize_t FRAME_LEN_RX = 31;  //
-const ssize_t FRAME_LEN_TX = 21;  //
+const ssize_t FRAME_LEN_RX = 31;  // single sub-frame
+const ssize_t FRAME_LEN_TX = 21;  // single sub-frame
+const ssize_t FRAME_LEN_OUTER_TX = 2 + (4 * FRAME_LEN_TX) + 1 + 2;
+const ssize_t FRAME_LEN_OUTER_RX = 2 + (4 * FRAME_LEN_RX) + 1 + 2;
 
 using namespace time_literals;
 
@@ -120,6 +134,16 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
          */
         void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
 
+        /**
+         * @brief Pack a 4-motor grouped packet (outer frame)
+         */
+        void packThrottleCmdGroup(const omni_outputs_cmd_groups_s& packet, uint8_t* frame, uint8_t& frame_len);
+
+        /**
+         * @brief Parse a single sub-frame (motor telemetry)
+         */
+        bool parseSingleRxFrame(const uint8_t* frame, bool check_checksum, omni_motor_telemetry_s* out, bool publish_single);
+
         void print_info();
 
         void ReOpenSerial();
@@ -143,10 +167,12 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
         /*uORB Subscriber*/
         uORB::Subscription _single_output_cmd_sub{ORB_ID(omni_outputs_cmd)};
+        uORB::Subscription _output_cmd_groups_sub{ORB_ID(omni_outputs_cmd_groups)};
         uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
         /*uORB Publisher*/
         uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
+        uORB::Publication<omni_motors_telemetry_s> _motors_telemetry_pub{ORB_ID(omni_motors_telemetry)};
         uORB::Publication<omni_outputs_cmd_frame_s> _omni_outputs_cmd_frame_pub{ORB_ID(omni_outputs_cmd_frame)};
 
         perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
