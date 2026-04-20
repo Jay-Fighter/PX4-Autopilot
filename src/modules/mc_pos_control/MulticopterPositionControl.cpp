@@ -200,6 +200,9 @@ void MulticopterPositionControl::parameters_update(bool force)
 			Vector3f(_param_mpc_xy_vel_d_acc.get(), _param_mpc_xy_vel_d_acc.get(), _param_mpc_z_vel_d_acc.get()));
 		_control.setHorizontalThrustMargin(_param_mpc_thr_xy_marg.get());
 		_control.decoupleHorizontalAndVecticalAcceleration(_param_mpc_acc_decouple.get());
+		// add by jayjie
+		_control.setOutputBackend(static_cast<PositionControlBackend>(_param_mpc_pos_backend.get()));
+		// end
 		_goto_control.setParamMpcAccHor(_param_mpc_acc_hor.get());
 		_goto_control.setParamMpcAccDownMax(_param_mpc_acc_down_max.get());
 		_goto_control.setParamMpcAccUpMax(_param_mpc_acc_up_max.get());
@@ -391,6 +394,10 @@ void MulticopterPositionControl::Run()
 	perf_begin(_cycle_perf);
 	vehicle_local_position_s vehicle_local_position;
 
+	// add by jayjie
+	vehicle_attitude_s v_att;
+	//end
+
 	if (_local_pos_sub.update(&vehicle_local_position)) {
 		const float dt =
 			math::constrain(((vehicle_local_position.timestamp_sample - _time_stamp_last_loop) * 1e-6f), 0.002f, 0.04f);
@@ -423,6 +430,10 @@ void MulticopterPositionControl::Run()
 				}
 			}
 		}
+
+		// add by jayjie
+		_vehicle_attitude_sub.update(&v_att);
+		// end
 
 		PositionControlStates states{set_vehicle_states(vehicle_local_position, dt)};
 
@@ -604,7 +615,12 @@ void MulticopterPositionControl::Run()
 
 			// Publish attitude setpoint output
 			vehicle_attitude_setpoint_s attitude_setpoint{};
-			_control.getAttitudeSetpoint(attitude_setpoint);
+
+			// add by jayjie
+			_control.getAttitudeSetpoint(attitude_setpoint, v_att);
+			// _control.getAttitudeSetpoint(attitude_setpoint);
+			// end
+
 			attitude_setpoint.timestamp = hrt_absolute_time();
 			_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
 

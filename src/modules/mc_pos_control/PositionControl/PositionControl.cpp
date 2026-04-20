@@ -47,6 +47,10 @@ using namespace matrix;
 
 const trajectory_setpoint_s PositionControl::empty_trajectory_setpoint = {0, {NAN, NAN, NAN}, {NAN, NAN, NAN}, {NAN, NAN, NAN}, {NAN, NAN, NAN}, NAN, NAN};
 
+// add by jayjie
+const matrix::Quatf PositionControl::empty_attitude_setpoint{NAN, NAN, NAN, NAN};
+// end
+
 void PositionControl::setVelocityGains(const Vector3f &P, const Vector3f &I, const Vector3f &D)
 {
 	_gain_vel_p = P;
@@ -105,6 +109,12 @@ void PositionControl::setInputSetpoint(const trajectory_setpoint_s &setpoint)
 	_yaw_sp = setpoint.yaw;
 	_yawspeed_sp = setpoint.yawspeed;
 }
+
+// add by jayjie
+void PositionControl::setInputAttSetpoint(const matrix::Quatf &quat_sp){
+	_quat_sp = quat_sp;
+}
+// end
 
 bool PositionControl::update(const float dt)
 {
@@ -220,7 +230,6 @@ void PositionControl::_accelerationControl()
 	const float cos_ned_body = (Vector3f(0, 0, 1).dot(body_z));
 	const float collective_thrust = math::min(thrust_ned_z / cos_ned_body, -_lim_thr_min);
 	_thr_sp = body_z * collective_thrust;
-	// PX4_INFO("body_z :%f, %f, %f", (double)body_z(0), (double)body_z(1), (double)body_z(2));
 }
 
 bool PositionControl::_inputValid()
@@ -266,9 +275,46 @@ void PositionControl::getLocalPositionSetpoint(vehicle_local_position_setpoint_s
 	// PX4_INFO("_thr_sp: %.3f, %.3f, %.3f", (double)_thr_sp(0), (double)_thr_sp(1), (double)_thr_sp(2));
 }
 
-void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const
-{
-	// ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
-	ControlMath::thrustToAttitude(_thr_sp, 0.0f, attitude_setpoint);
-	attitude_setpoint.yaw_sp_move_rate = _yawspeed_sp;
+// comment by jayjie
+// void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const
+// {
+// 	ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
+// 	attitude_setpoint.yaw_sp_move_rate = _yawspeed_sp;
+// }
+// end
+
+// add by jayjie
+void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s& attitude_setpoint, vehicle_attitude_s& v_att) const {
+
+        switch (_output_backend) {
+                case PositionControlBackend::Legacy:
+                        ControlMath::thrustToAttitude(_thr_sp, _yaw_sp, attitude_setpoint);
+                        attitude_setpoint.yaw_sp_move_rate = _yawspeed_sp;
+                        break;
+
+                case PositionControlBackend::Omni3D:
+                        // Set thrust setpoint
+                        const Dcmf R_to_body(Quatf(v_att.q).inversed());
+                        matrix::Vector3f b_thr_sp = R_to_body * _thr_sp;
+                        attitude_setpoint.thrust_body[0] = b_thr_sp(0);
+                        attitude_setpoint.thrust_body[1] = b_thr_sp(1);
+                        attitude_setpoint.thrust_body[2] = b_thr_sp(2);
+
+                        // Bypass attitude control by giving same attitude setpoint to att control
+                        if (PX4_ISFINITE(_quat_sp(0)) && PX4_ISFINITE(_quat_sp(1)) && PX4_ISFINITE(_quat_sp(2)) && PX4_ISFINITE(_quat_sp(3))) {
+                                attitude_setpoint.q_d[0] = _quat_sp(0);
+                                attitude_setpoint.q_d[1] = _quat_sp(1);
+                                attitude_setpoint.q_d[2] = _quat_sp(2);
+                                attitude_setpoint.q_d[3] = _quat_sp(3);
+
+                        } else {
+				const Quatf q_init(Eulerf(0.f, 0.f, 0.0f));
+                                attitude_setpoint.q_d[0] = q_init(0);
+                                attitude_setpoint.q_d[1] = q_init(1);
+                                attitude_setpoint.q_d[2] = q_init(2);
+                                attitude_setpoint.q_d[3] = q_init(3);
+                        }
+                        break;
+        }
 }
+// end

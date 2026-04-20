@@ -14,7 +14,7 @@ float32[4] fy
 float32[4] fz
 float32[4] f # total thrust
 
-float32 fx_body
-float32 fy_body
-float32 fz_body
+float32[3] torque_sp_body  # desired torque about body x/y/z, normalized
+float32[3] thrust_sp_body  # desired thrust along body x/y/z, normalized [-1, 1]
+
 uint8 num_groups

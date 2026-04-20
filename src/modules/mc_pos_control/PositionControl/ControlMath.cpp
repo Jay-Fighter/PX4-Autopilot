@@ -48,17 +48,6 @@ void thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp, vehicle_attitu
 {
 	bodyzToAttitude(-thr_sp, yaw_sp, att_sp);
 	att_sp.thrust_body[2] = -thr_sp.length();
-	    // 1) 给定你想要的姿态：roll=0, pitch=20°, yaw=yaw_sp
-	float roll  = 0.0f;
-	float pitch = math::radians(20.0f);  // 转成弧度
-	float yaw   = yaw_sp;                // 你的 yaw 控制目标
-
-	// 2) 生成四元数
-	matrix::Eulerf euler(roll, pitch, yaw);
-	matrix::Quatf q_d(euler);
-
-	// 3) 写回 attitude setpoint
-	q_d.copyTo(att_sp.q_d);
 }
 
 void limitTilt(Vector3f &body_unit, const Vector3f &world_unit, const float max_angle)

@@ -60,6 +60,19 @@ PARAM_DEFINE_FLOAT(MPC_THR_HOVER, 0.5f);
 PARAM_DEFINE_INT32(MPC_USE_HTE, 1);
 
 /**
+ * Position controller output backend
+ *
+ * Selects the output mapping backend used by the multicopter position controller.
+ *
+ * @value 0 Legacy
+ * @value 1 Omni3D
+ * @group Multicopter Position Control
+ */
+// add by jayjie
+PARAM_DEFINE_INT32(MPC_POS_BACKEND, 0);
+// end
+
+/**
  * Horizontal thrust margin
  *
  * Margin that is kept for horizontal control when higher priority vertical thrust is saturated.

@@ -106,20 +106,20 @@ bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& 
         return motors_added_successfully;
 }
 
-// bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& configuration, EffectivenessUpdateReason external_update) {
-//         if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
-//                 return false;
-//         }
-//         // Motors
-//         const bool rotors_added_successfully = _mc_rotors.addActuators(configuration);
-
-//         return rotors_added_successfully;
-// }
-
 void ActuatorEffectivenessOmniMultirotor::updateSetpoint(const matrix::Vector<float, NUM_AXES>& control_sp, int matrix_index,
                                                          ActuatorVector& actuator_sp, const matrix::Vector<float, NUM_ACTUATORS>& actuator_min,
                                                          const matrix::Vector<float, NUM_ACTUATORS>& actuator_max) {
         omni_actuator_setpoint_s omni_actuator_sp{0};
+
+	// copy desired torque/thrust body to omni_actuator_sp
+	omni_actuator_sp.torque_sp_body[0] = control_sp(ControlAxis::ROLL);
+	omni_actuator_sp.torque_sp_body[1] = control_sp(ControlAxis::PITCH);
+	omni_actuator_sp.torque_sp_body[2] = control_sp(ControlAxis::YAW);
+
+	omni_actuator_sp.thrust_sp_body[0] = control_sp(ControlAxis::THRUST_X);
+	omni_actuator_sp.thrust_sp_body[1] = control_sp(ControlAxis::THRUST_Y);
+	omni_actuator_sp.thrust_sp_body[2] = control_sp(ControlAxis::THRUST_Z);
+
         for (int index = 0; index < 4; index++) {
                 int base = index * 3;
                 omni_actuator_sp.control[base + 0] = actuator_sp(base + 0);

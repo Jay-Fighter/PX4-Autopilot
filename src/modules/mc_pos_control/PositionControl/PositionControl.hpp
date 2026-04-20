@@ -45,12 +45,24 @@
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 
+// add by jayjie
+#include <cstdint>
+#include <uORB/topics/vehicle_attitude.h>
+//end
+
 struct PositionControlStates {
 	matrix::Vector3f position;
 	matrix::Vector3f velocity;
 	matrix::Vector3f acceleration;
 	float yaw;
 };
+
+// add by jayjie
+enum class PositionControlBackend : int32_t {
+	Legacy = 0,
+	Omni3D = 1,
+};
+// end
 
 /**
  * 	Core Position-Control for MC.
@@ -146,6 +158,10 @@ public:
 	 */
 	void setInputSetpoint(const trajectory_setpoint_s &setpoint);
 
+	// add by jayjie
+	void setInputAttSetpoint(const matrix::Quatf &quat_sp);
+	// end
+
 	/**
 	 * Apply P-position and PID-velocity controller that updates the member
 	 * thrust, yaw- and yawspeed-setpoints.
@@ -183,12 +199,29 @@ public:
 	 * It needs to be executed by the attitude controller to achieve velocity and position tracking.
 	 * @param attitude_setpoint reference to struct to fill up
 	 */
-	void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const;
+	// comment by jayjie
+	// void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const;
+	// end
+
+	// add by jayjie
+	void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint, vehicle_attitude_s &v_att) const;
+	// end
+
+	// add by jayjie
+	void setOutputBackend(PositionControlBackend backend) { _output_backend = backend; }
+	// end
 
 	/**
 	 * All setpoints are set to NAN (uncontrolled). Timestampt zero.
 	 */
 	static const trajectory_setpoint_s empty_trajectory_setpoint;
+
+	// add by jayjie
+	/**
+	 * All setpoints are set to NAN (uncontrolled). Timestampt zero.
+	 */
+	static const matrix::Quatf empty_attitude_setpoint;
+	// end
 
 private:
 	// The range limits of the hover thrust configuration/estimate
@@ -231,6 +264,10 @@ private:
 	matrix::Vector3f _vel_sp; /**< desired velocity */
 	matrix::Vector3f _acc_sp; /**< desired acceleration */
 	matrix::Vector3f _thr_sp; /**< desired thrust */
+	// add by jayjie
+	matrix::Quatf _quat_sp{PositionControl::empty_attitude_setpoint};   /**< desired attitude */
+	PositionControlBackend _output_backend{PositionControlBackend::Legacy}; /**< position control backend to use for attitude setpoint generation */
+	// end
 	float _yaw_sp{}; /**< desired heading */
 	float _yawspeed_sp{}; /** desired yaw-speed */
 };

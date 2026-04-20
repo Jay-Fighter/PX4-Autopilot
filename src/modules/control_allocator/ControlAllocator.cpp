@@ -407,18 +407,18 @@ ControlAllocator::Run()
 
 		// Set control setpoint vector(s)
 		matrix::Vector<float, NUM_AXES> c[ActuatorEffectiveness::MAX_NUM_MATRICES];
-		// c[0](0) = _torque_sp(0);
-		// c[0](1) = _torque_sp(1);
-		// c[0](2) = _torque_sp(2);
-		// c[0](3) = _thrust_sp(0);
-		// c[0](4) = _thrust_sp(1);
-		// c[0](5) = _thrust_sp(2);
-		c[0](0) = 0.0f;
-		c[0](1) = 0.0f;
-		c[0](2) = 0.0f;
-		c[0](3) = 0.1f;
-		c[0](4) = 0.1f;
-		c[0](5) = -0.7f;
+		c[0](0) = _torque_sp(0);
+		c[0](1) = _torque_sp(1);
+		c[0](2) = _torque_sp(2);
+		c[0](3) = _thrust_sp(0);
+		c[0](4) = _thrust_sp(1);
+		c[0](5) = _thrust_sp(2);
+		// c[0](0) = 0.0f;
+		// c[0](1) = 0.0f;
+		// c[0](2) = 0.0f;
+		// c[0](3) = 0.1f;
+		// c[0](4) = 0.1f;
+		// c[0](5) = -0.7f;
 
 		if (_num_control_allocation > 1) {
 			if (_vehicle_torque_setpoint1_sub.copy(&vehicle_torque_setpoint)) {
