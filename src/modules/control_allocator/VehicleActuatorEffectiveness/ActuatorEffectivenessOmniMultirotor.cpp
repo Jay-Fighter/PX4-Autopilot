@@ -63,7 +63,7 @@ bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& 
                 float ct = geometry.rotors[index].thrust_coef;
                 effectiveness(3, index * 3 + 0) = ct;  // Fx
                 effectiveness(4, index * 3 + 1) = ct;  // Fy
-                effectiveness(5, index * 3 + 2) = ct;  // Fz
+                effectiveness(5, index * 3 + 2) = -ct;  // Fz
         }
 
         // Fill moment = r × F

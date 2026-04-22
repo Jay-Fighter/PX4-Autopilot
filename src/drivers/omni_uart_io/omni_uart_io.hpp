@@ -44,6 +44,8 @@
 #include <uORB/topics/omni_outputs_cmd.h>
 #include <uORB/topics/omni_outputs_cmd_groups.h>
 #include <uORB/topics/omni_outputs_cmd_frame.h>
+#include <uORB/topics/actuator_armed.h>
+
 
 #include "../omni_common/omni_debug.h"
 #include <uORB/topics/parameter_update.h>
@@ -152,13 +154,20 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
        private:
         char _port_in_use[20]{};
-        uint8_t _bytes_available;
+        // add by jayjie
+        int _bytes_available{0};
+        // end
 
         //     bool _motor_init_flag{false};
 
-        // Buffers for data to transmit or that we're receiving
-        uint8_t _rx_buf[256];
-        uint8_t _tx_buf[256];
+       // Buffers for data to transmit or that we're receiving
+       uint8_t _rx_buf[256];
+       uint8_t _tx_buf[256];
+        // add by jayjie
+        static constexpr size_t RX_ACCUM_BUF_LEN = 512;
+        uint8_t _rx_accum[RX_ACCUM_BUF_LEN]{};
+        size_t _rx_accum_len{0};
+        // end
 
         // The port that we're using for communication
         int _uart_fd{-1};
@@ -168,6 +177,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
         /*uORB Subscriber*/
         uORB::Subscription _single_output_cmd_sub{ORB_ID(omni_outputs_cmd)};
         uORB::Subscription _output_cmd_groups_sub{ORB_ID(omni_outputs_cmd_groups)};
+        uORB::Subscription _actuator_armed_sub{ORB_ID(actuator_armed)};
         uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
         /*uORB Publisher*/
@@ -177,7 +187,9 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
 
         perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
         perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};
-        perf_counter_t _comms_errors;  //统计某类事件的发生次数
+        // perf_counter_t _comms_errors;  //统计某类事件的发生次数
+        perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME ": comms errors")};
+
 
         // QGC param
         DEFINE_PARAMETERS(

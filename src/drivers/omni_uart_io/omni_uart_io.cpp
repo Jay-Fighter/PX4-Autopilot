@@ -182,7 +182,7 @@ bool OmniSerialInterface::CheckForRx() {
 
         if (ret != 0) {
                 PX4_ERR("Reading error");
-                return -1;
+                return false;
         }
 
         //     PX4_INFO("CheckForRx: available=%d bytes", (int)_bytes_available);
@@ -193,7 +193,14 @@ bool OmniSerialInterface::CheckForRx() {
 void OmniSerialInterface::ProcessSerialRx() {
 
         // === 1. 从串口读取数据 ===
-        ssize_t bytes_read = ::read(_uart_fd, _rx_buf, _bytes_available);
+        // add by jayjie
+        const size_t read_len = math::min(static_cast<size_t>(_bytes_available), sizeof(_rx_buf));
+        const ssize_t bytes_read = ::read(_uart_fd, _rx_buf, read_len);
+
+        if (bytes_read <= 0) {
+                return;
+        }
+        // end
 
 #ifdef OMNI_DEBUG
         if (bytes_read < FRAME_LEN_RX) {
@@ -224,60 +231,101 @@ void OmniSerialInterface::ProcessSerialRx() {
         const uint8_t* frame = &_rx_buf[start_index];
         parseSingleRxFrame(frame, true, &_motor_telemetry, true);
 #else
-        if (bytes_read < FRAME_LEN_OUTER_RX) {
-                return;
-        }
+        // add by jayjie
+        if (_rx_accum_len + static_cast<size_t>(bytes_read) > RX_ACCUM_BUF_LEN) {
+                if (static_cast<size_t>(bytes_read) >= RX_ACCUM_BUF_LEN) {
+                        memcpy(_rx_accum, _rx_buf + (bytes_read - RX_ACCUM_BUF_LEN), RX_ACCUM_BUF_LEN);
+                        _rx_accum_len = RX_ACCUM_BUF_LEN;
 
-        int start_index = -1;
-        for (ssize_t i = 0; i < bytes_read - 1; i++) {
-                if (_rx_buf[i] == FRAME_OUTER_RX_HEADER_1 && _rx_buf[i + 1] == FRAME_OUTER_RX_HEADER_2) {
-                        start_index = i;
-                        break;
+                } else {
+                        const size_t bytes_to_drop = (_rx_accum_len + static_cast<size_t>(bytes_read)) - RX_ACCUM_BUF_LEN;
+                        memmove(_rx_accum, _rx_accum + bytes_to_drop, _rx_accum_len - bytes_to_drop);
+                        _rx_accum_len -= bytes_to_drop;
+                        memcpy(_rx_accum + _rx_accum_len, _rx_buf, bytes_read);
+                        _rx_accum_len += static_cast<size_t>(bytes_read);
                 }
+
+        } else {
+                memcpy(_rx_accum + _rx_accum_len, _rx_buf, bytes_read);
+                _rx_accum_len += static_cast<size_t>(bytes_read);
         }
 
-        if (start_index < 0) {
-                return;
-        }
+        while (_rx_accum_len >= 2) {
+                size_t start_index = SIZE_MAX;
 
-        if (bytes_read - start_index < FRAME_LEN_OUTER_RX) {
-                return;
-        }
-
-        const uint8_t* frame = &_rx_buf[start_index];
-
-        if (frame[FRAME_LEN_OUTER_RX - 2] != FRAME_OUTER_RX_END_1 || frame[FRAME_LEN_OUTER_RX - 1] != FRAME_OUTER_RX_END_2) {
-                return;
-        }
-
-        uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_OUTER_RX - 3);
-        uint8_t recv_sum = frame[FRAME_LEN_OUTER_RX - 3];
-
-        if (check_sum != recv_sum) {
-                return;
-        }
-
-        omni_motors_telemetry_s motors_telemetry{};
-        const uint8_t* subframe = frame + 2;
-        for (int i = 0; i < 4; i++) {
-                omni_motor_telemetry_s single{};
-                if (parseSingleRxFrame(subframe, false, &single, false)) {
-                        motors_telemetry.index[i] = i+1;
-                        motors_telemetry.obs_angle_rad[i] = single.obs_angle_rad;
-                        motors_telemetry.obs_angle_deg[i] = single.obs_angle_deg;
-                        motors_telemetry.obs_rpm[i] = single.obs_rpm;
-                        motors_telemetry.throttle_ua[i] = single.throttle_ua;
-                        motors_telemetry.throttle_us[i] = single.throttle_us;
-                        motors_telemetry.throttle_u[i] = single.throttle_u;
-                        motors_telemetry.throttle_phase[i] = single.throttle_phase;
-                        motors_telemetry.throttle_lag_angle[i] = single.throttle_lag_angle;
-                        motors_telemetry.esc_voltage[i] = single.esc_voltage;
-                        motors_telemetry.esc_current[i] = single.esc_current;
+                for (size_t i = 0; i + 1 < _rx_accum_len; i++) {
+                        if (_rx_accum[i] == FRAME_OUTER_RX_HEADER_1 && _rx_accum[i + 1] == FRAME_OUTER_RX_HEADER_2) {
+                                start_index = i;
+                                break;
+                        }
                 }
-                subframe += FRAME_LEN_RX;
+
+                if (start_index == SIZE_MAX) {
+                        _rx_accum_len = (_rx_accum[_rx_accum_len - 1] == FRAME_OUTER_RX_HEADER_1) ? 1 : 0;
+
+                        if (_rx_accum_len == 1) {
+                                _rx_accum[0] = FRAME_OUTER_RX_HEADER_1;
+                        }
+
+                        return;
+                }
+
+                if (start_index > 0) {
+                        memmove(_rx_accum, _rx_accum + start_index, _rx_accum_len - start_index);
+                        _rx_accum_len -= start_index;
+                }
+
+                if (_rx_accum_len < static_cast<size_t>(FRAME_LEN_OUTER_RX)) {
+                        return;
+                }
+
+                const uint8_t* frame = _rx_accum;
+
+                if (frame[FRAME_LEN_OUTER_RX - 2] != FRAME_OUTER_RX_END_1 || frame[FRAME_LEN_OUTER_RX - 1] != FRAME_OUTER_RX_END_2) {
+                        memmove(_rx_accum, _rx_accum + 1, _rx_accum_len - 1);
+                        _rx_accum_len -= 1;
+                        continue;
+                }
+
+                const uint8_t check_sum = calcChecksum(&frame[0], FRAME_LEN_OUTER_RX - 3);
+                const uint8_t recv_sum = frame[FRAME_LEN_OUTER_RX - 3];
+
+                if (check_sum != recv_sum) {
+                        memmove(_rx_accum, _rx_accum + 1, _rx_accum_len - 1);
+                        _rx_accum_len -= 1;
+                        continue;
+                }
+
+                omni_motors_telemetry_s motors_telemetry{};
+                const uint8_t* subframe = frame + 2;
+
+                for (int i = 0; i < 4; i++) {
+                        omni_motor_telemetry_s single{};
+
+                        if (parseSingleRxFrame(subframe, false, &single, false)) {
+                                motors_telemetry.index[i] = i + 1;
+                                motors_telemetry.obs_angle_rad[i] = single.obs_angle_rad;
+                                motors_telemetry.obs_angle_deg[i] = single.obs_angle_deg;
+                                motors_telemetry.obs_rpm[i] = single.obs_rpm;
+                                motors_telemetry.throttle_ua[i] = single.throttle_ua;
+                                motors_telemetry.throttle_us[i] = single.throttle_us;
+                                motors_telemetry.throttle_u[i] = single.throttle_u;
+                                motors_telemetry.throttle_phase[i] = single.throttle_phase;
+                                motors_telemetry.throttle_lag_angle[i] = single.throttle_lag_angle;
+                                motors_telemetry.esc_voltage[i] = single.esc_voltage;
+                                motors_telemetry.esc_current[i] = single.esc_current;
+                        }
+
+                        subframe += FRAME_LEN_RX;
+                }
+
+                motors_telemetry.timestamp = hrt_absolute_time();
+                _motors_telemetry_pub.publish(motors_telemetry);
+
+                memmove(_rx_accum, _rx_accum + FRAME_LEN_OUTER_RX, _rx_accum_len - FRAME_LEN_OUTER_RX);
+                _rx_accum_len -= FRAME_LEN_OUTER_RX;
         }
-        motors_telemetry.timestamp = hrt_absolute_time();
-        _motors_telemetry_pub.publish(motors_telemetry);
+        // end
 #endif
 
         // === 打印完整帧数据（十六进制） ===
@@ -310,6 +358,13 @@ uint16_t OmniSerialInterface::bytesToUint16(const uint8_t* bytes) {
 void OmniSerialInterface::ProcessSerialTx() {
 
         ReOpenSerial();
+        // add by jayjie
+        actuator_armed_s actuator_armed{};
+        _actuator_armed_sub.copy(&actuator_armed);
+
+        // const bool outputs_enabled = actuator_armed.armed && !actuator_armed.lockdown;
+        const bool outputs_enabled = true;
+        // end
 
 #ifdef OMNI_DEBUG
         if (_param_omni_frame_enable_flag.get() == PX4_OK) {
@@ -334,7 +389,7 @@ void OmniSerialInterface::ProcessSerialTx() {
                 }
         }
 #else
-        if (_param_omni_frame_enable_flag.get() == PX4_OK) {
+        if (_param_omni_frame_enable_flag.get() == PX4_OK || !outputs_enabled) {
                 omni_outputs_cmd_groups_s zero_cmd{};
                 for (int i = 0; i < 4; i++) {
                         zero_cmd.index[i] = i;
@@ -345,7 +400,7 @@ void OmniSerialInterface::ProcessSerialTx() {
                 int ret = ::write(_uart_fd, frame_, frame_len_);
                 if (ret != frame_len_) {
                         perf_count(_comms_errors);
-                        PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+                        // PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
                         tcflush(_uart_fd, TCOFLUSH);
                 }
                 return;
@@ -359,7 +414,7 @@ void OmniSerialInterface::ProcessSerialTx() {
                 int ret = ::write(_uart_fd, frame_, frame_len_);
                 if (ret != frame_len_) {
                         perf_count(_comms_errors);
-                        PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
+                        // PX4_ERR("UART write ret=%d, errno=%d, fd=%d", ret, errno, _uart_fd);
                         tcflush(_uart_fd, TCOFLUSH);
                 }
         }
@@ -470,8 +525,7 @@ void OmniSerialInterface::packThrottleCmdGroup(const omni_outputs_cmd_groups_s& 
         frame[frame_len++] = FRAME_OUTER_TX_END_2;
 }
 
-bool OmniSerialInterface::parseSingleRxFrame(const uint8_t* frame, bool check_checksum, omni_motor_telemetry_s* out,
-                                             bool publish_single) {
+bool OmniSerialInterface::parseSingleRxFrame(const uint8_t* frame, bool check_checksum, omni_motor_telemetry_s* out, bool publish_single) {
         if (frame[0] != FRAME_HEADER_1 || frame[1] != FRAME_HEADER_2) {
                 return false;
         }

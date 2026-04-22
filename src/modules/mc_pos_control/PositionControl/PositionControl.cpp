@@ -309,10 +309,14 @@ void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s& attitude_
 
                         } else {
 				const Quatf q_init(Eulerf(0.f, 0.f, 0.0f));
-                                attitude_setpoint.q_d[0] = q_init(0);
-                                attitude_setpoint.q_d[1] = q_init(1);
-                                attitude_setpoint.q_d[2] = q_init(2);
-                                attitude_setpoint.q_d[3] = q_init(3);
+                                // attitude_setpoint.q_d[0] = q_init(0);
+                                // attitude_setpoint.q_d[1] = q_init(1);
+                                // attitude_setpoint.q_d[2] = q_init(2);
+                                // attitude_setpoint.q_d[3] = q_init(3);
+				attitude_setpoint.q_d[0] = v_att.q[0];
+                                attitude_setpoint.q_d[1] = v_att.q[1];
+                                attitude_setpoint.q_d[2] = v_att.q[2];
+                                attitude_setpoint.q_d[3] = v_att.q[3];
                         }
                         break;
         }

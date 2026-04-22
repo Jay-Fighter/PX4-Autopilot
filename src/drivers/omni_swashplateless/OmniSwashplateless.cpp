@@ -120,7 +120,8 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
         for (size_t i = 0; i < output.num_groups; i++) {
                 float ua = std::fabs(output.fz[i]) * ACTUATOR_CONTROLS_TO_DSHOT;
                 float us = sqrtf((output.fx[i] * output.fx[i] + output.fy[i] * output.fy[i]) / 2.0f) * ACTUATOR_CONTROLS_TO_DSHOT;
-
+                ua = 0.15*ACTUATOR_CONTROLS_TO_DSHOT;
+                us = 0;
                 float phase = atan2f(output.fy[i], output.fx[i]);
                 if (phase < 0.0f) {
                         phase += 2.0f * static_cast<float>(M_PI);
