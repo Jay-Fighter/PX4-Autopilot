@@ -134,7 +134,7 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
         /**
          * @brief Pack a throttle command packet
          */
-        void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len);
+        void packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t encoder_reverse_flag, uint8_t* frame, uint8_t& frame_len);
 
         /**
          * @brief Pack a 4-motor grouped packet (outer frame)
@@ -151,6 +151,10 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
         void ReOpenSerial();
 
         void setMotorZeroPosAndRev();
+
+        // add by jayjie
+        uint8_t getEncoderReverseFlagForMotor(uint8_t motor_index) const;
+        // end
 
        private:
         char _port_in_use[20]{};

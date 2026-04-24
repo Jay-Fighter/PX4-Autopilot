@@ -362,8 +362,8 @@ void OmniSerialInterface::ProcessSerialTx() {
         actuator_armed_s actuator_armed{};
         _actuator_armed_sub.copy(&actuator_armed);
 
-        // const bool outputs_enabled = actuator_armed.armed && !actuator_armed.lockdown;
-        const bool outputs_enabled = true;
+        const bool outputs_enabled = actuator_armed.armed && !actuator_armed.lockdown;
+        // const bool outputs_enabled = true;
         // end
 
 #ifdef OMNI_DEBUG
@@ -375,7 +375,7 @@ void OmniSerialInterface::ProcessSerialTx() {
                 if (_single_output_cmd_sub.update(&single_output_cmd)) {
                         uint8_t frame_[FRAME_LEN_TX];
                         uint8_t frame_len_ = 0;
-                        packThrottleCmd(single_output_cmd, frame_, frame_len_);
+                        packThrottleCmd(single_output_cmd, _param_encoder_rev_flag.get(), frame_, frame_len_);
                         int ret = 0;
 
                         ret = ::write(_uart_fd, frame_, frame_len_);
@@ -431,7 +431,7 @@ uint8_t OmniSerialInterface::calcChecksum(const uint8_t* data, size_t len) {
         return static_cast<uint8_t>(sum & 0xFF);
 }
 
-void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t* frame, uint8_t& frame_len) {
+void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint8_t encoder_reverse_flag, uint8_t* frame, uint8_t& frame_len) {
 
         // frame header
         frame[frame_len++] = FRAME_HEADER_1;
@@ -447,7 +447,7 @@ void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint
         frame[frame_len++] = _param_omni_motor_zero_flag.get();
 
         // === 编码器角度反转标志位 ===
-        frame[frame_len++] = _param_encoder_rev_flag.get();
+        frame[frame_len++] = encoder_reverse_flag;
 
         // throttle ua
         uint16_t ua_val = static_cast<uint16_t>(packet.throttle_ua);
@@ -496,10 +496,22 @@ void OmniSerialInterface::packThrottleCmd(const omni_outputs_cmd_s& packet, uint
         omni_outputs_cmd_frame.throttle_ctrls_lag_angle = packet.throttle_ctrls_lag_angle;
         omni_outputs_cmd_frame.frame_enable_flag = _param_omni_frame_enable_flag.get();
         omni_outputs_cmd_frame.motor_zero_set_flag = _param_omni_motor_zero_flag.get();
-        omni_outputs_cmd_frame.encoder_reverse_flag = _param_encoder_rev_flag.get();
+        omni_outputs_cmd_frame.encoder_reverse_flag = encoder_reverse_flag;
         omni_outputs_cmd_frame.timestamp = hrt_absolute_time();
         _omni_outputs_cmd_frame_pub.publish(omni_outputs_cmd_frame);
 }
+
+// add by jayjie
+uint8_t OmniSerialInterface::getEncoderReverseFlagForMotor(uint8_t motor_index) const {
+        const uint8_t base_flag = static_cast<uint8_t>(_param_encoder_rev_flag.get());
+
+        if (motor_index < 2) {
+                return base_flag;
+        }
+
+        return static_cast<uint8_t>(base_flag == 0 ? 1 : 0);
+}
+// end
 
 void OmniSerialInterface::packThrottleCmdGroup(const omni_outputs_cmd_groups_s& packet, uint8_t* frame, uint8_t& frame_len) {
         frame[frame_len++] = FRAME_OUTER_TX_HEADER_1;
@@ -514,7 +526,10 @@ void OmniSerialInterface::packThrottleCmdGroup(const omni_outputs_cmd_groups_s& 
                 single_cmd.throttle_us = packet.throttle_us[i];
                 single_cmd.throttle_ctrls_phase = packet.throttle_ctrls_phase[i];
                 single_cmd.throttle_ctrls_lag_angle = packet.throttle_ctrls_lag_angle[i];
-                packThrottleCmd(single_cmd, sub_frame, sub_len);
+                // add by jayjie
+                const uint8_t encoder_reverse_flag = getEncoderReverseFlagForMotor(single_cmd.index);
+                // end
+                packThrottleCmd(single_cmd, encoder_reverse_flag, sub_frame, sub_len);
                 memcpy(frame + frame_len, sub_frame, sub_len);
                 frame_len += sub_len;
         }
@@ -591,7 +606,7 @@ void OmniSerialInterface::setMotorZeroPosAndRev() {
         uint8_t frame_[FRAME_LEN_TX];
         uint8_t frame_len_ = 0;
 
-        packThrottleCmd(pack_cmd, frame_, frame_len_);
+        packThrottleCmd(pack_cmd, _param_encoder_rev_flag.get(), frame_, frame_len_);
         int ret = 0;
 
         ret = ::write(_uart_fd, frame_, frame_len_);
