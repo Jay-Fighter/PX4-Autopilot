@@ -200,36 +200,90 @@ void OmniSerialInterface::ProcessSerialRx() {
         if (bytes_read <= 0) {
                 return;
         }
+
+        // add by jayjie
+        // static hrt_abstime last_raw_rx_print{0};
+
+        // if (hrt_elapsed_time(&last_raw_rx_print) > 200000) {
+        //         last_raw_rx_print = hrt_absolute_time();
+        //         PX4_INFO_RAW("[omni_uart_io] raw rx: available=%d read=%d accum=%u data:",
+        //                       _bytes_available, static_cast<int>(bytes_read), static_cast<unsigned>(_rx_accum_len));
+
+        //         for (ssize_t i = 0; i < bytes_read; i++) {
+        //                 PX4_INFO_RAW(" %02X", static_cast<unsigned>(_rx_buf[i]));
+        //         }
+
+        //         PX4_INFO_RAW("\n");
+        // }
         // end
 
 #ifdef OMNI_DEBUG
-        if (bytes_read < FRAME_LEN_RX) {
-                // perf_count(_comms_errors);
-                return;
-        };
+        // add by jayjie
+        if (_rx_accum_len + static_cast<size_t>(bytes_read) > RX_ACCUM_BUF_LEN) {
+                if (static_cast<size_t>(bytes_read) >= RX_ACCUM_BUF_LEN) {
+                        memcpy(_rx_accum, _rx_buf + (bytes_read - RX_ACCUM_BUF_LEN), RX_ACCUM_BUF_LEN);
+                        _rx_accum_len = RX_ACCUM_BUF_LEN;
 
-        // === 2. 查找起始标志 (0xABCD) ===
-        int start_index = -1;
-        for (ssize_t i = 0; i < bytes_read - 1; i++) {
-                if (_rx_buf[i] == FRAME_HEADER_1 && _rx_buf[i + 1] == FRAME_HEADER_2) {
-                        start_index = i;
-                        break;
+                } else {
+                        const size_t bytes_to_drop = (_rx_accum_len + static_cast<size_t>(bytes_read)) - RX_ACCUM_BUF_LEN;
+                        memmove(_rx_accum, _rx_accum + bytes_to_drop, _rx_accum_len - bytes_to_drop);
+                        _rx_accum_len -= bytes_to_drop;
+                        memcpy(_rx_accum + _rx_accum_len, _rx_buf, bytes_read);
+                        _rx_accum_len += static_cast<size_t>(bytes_read);
                 }
+
+        } else {
+                memcpy(_rx_accum + _rx_accum_len, _rx_buf, bytes_read);
+                _rx_accum_len += static_cast<size_t>(bytes_read);
         }
 
-        if (start_index < 0) {
-                // perf_count(_comms_errors);
-                return;
-        }
+        while (_rx_accum_len >= 2) {
+                size_t start_index = SIZE_MAX;
 
-        // === 3. 校验长度是否足够 ===
-        if (bytes_read - start_index < FRAME_LEN_RX) {
-                // perf_count(_comms_errors);
-                return;
-        }
+                for (size_t i = 0; i + 1 < _rx_accum_len; i++) {
+                        if (_rx_accum[i] == FRAME_HEADER_1 && _rx_accum[i + 1] == FRAME_HEADER_2) {
+                                start_index = i;
+                                break;
+                        }
+                }
 
-        const uint8_t* frame = &_rx_buf[start_index];
-        parseSingleRxFrame(frame, true, &_motor_telemetry, true);
+                if (start_index == SIZE_MAX) {
+                        _rx_accum_len = (_rx_accum[_rx_accum_len - 1] == FRAME_HEADER_1) ? 1 : 0;
+
+                        if (_rx_accum_len == 1) {
+                                _rx_accum[0] = FRAME_HEADER_1;
+                        }
+
+                        return;
+                }
+
+                if (start_index > 0) {
+                        memmove(_rx_accum, _rx_accum + start_index, _rx_accum_len - start_index);
+                        _rx_accum_len -= start_index;
+                }
+
+                if (_rx_accum_len < static_cast<size_t>(FRAME_LEN_RX)) {
+                        return;
+                }
+
+                const uint8_t* frame = _rx_accum;
+
+                if (frame[FRAME_LEN_RX - 2] != FRAME_END_1 || frame[FRAME_LEN_RX - 1] != FRAME_END_2) {
+                        memmove(_rx_accum, _rx_accum + 1, _rx_accum_len - 1);
+                        _rx_accum_len -= 1;
+                        continue;
+                }
+
+                if (!parseSingleRxFrame(frame, true, &_motor_telemetry, true)) {
+                        memmove(_rx_accum, _rx_accum + 1, _rx_accum_len - 1);
+                        _rx_accum_len -= 1;
+                        continue;
+                }
+
+                memmove(_rx_accum, _rx_accum + FRAME_LEN_RX, _rx_accum_len - FRAME_LEN_RX);
+                _rx_accum_len -= FRAME_LEN_RX;
+        }
+        // end
 #else
         // add by jayjie
         if (_rx_accum_len + static_cast<size_t>(bytes_read) > RX_ACCUM_BUF_LEN) {
@@ -343,6 +397,7 @@ void OmniSerialInterface::ProcessSerialRx() {
 
         return;
 }
+
 
 float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
         uint8_t b[4] = {bytes[3], bytes[2], bytes[1], bytes[0]};

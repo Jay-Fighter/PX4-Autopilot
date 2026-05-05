@@ -38,7 +38,7 @@
  * OMNI_TEST_TRI_PHASE_FIXED_UA_US  = 10,  // Test10: Triangle wave on Phase (0°→360°→0°), UA & US fixed
  */
 
-#define OMNI_TEST_MODE_SELECTED 10
+#define OMNI_TEST_MODE_SELECTED 4
 
 #define OMNI_ACTUATOR_NUM 4
 
