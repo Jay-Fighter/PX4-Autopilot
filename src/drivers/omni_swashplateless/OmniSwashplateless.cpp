@@ -183,22 +183,23 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
 // add by jayjie
 void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint) {
 
-        const float throttle_norm = math::constrain((manual_control_setpoint.throttle + 1.0f) * 0.5f, 0.0f, 1.0f);
-        const float yaw_abs = math::constrain(std::fabs(manual_control_setpoint.yaw), 0.0f, 1.0f);
+        const float throttle_norm = math::constrain((1.0f + manual_control_setpoint.throttle) * 0.5f, 0.0f, 1.0f);
+        const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
+        const float roll_abs = math::constrain(std::fabs(roll), 0.0f, 1.0f);
 
         const float ua =
             math::constrain(throttle_norm * ACTUATOR_CONTROLS_TO_DSHOT, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
 
-        const float us = math::constrain(yaw_abs * us_2_ua_ratio_max * ua, 0.0f, us_2_ua_ratio_max * ua);
+        const float us = math::constrain(roll_abs * us_2_ua_ratio_max * ua, 0.0f, us_2_ua_ratio_max * ua);
 
-        const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
+        const float yaw = math::constrain(manual_control_setpoint.yaw, -1.0f, 1.0f);
         const float pitch = math::constrain(manual_control_setpoint.pitch, -1.0f, 1.0f);
-        const float phase_stick_norm = sqrtf(roll * roll + pitch * pitch);
+        const float phase_stick_norm = sqrtf(yaw * yaw + pitch * pitch);
 
         float phase = 0.0f;
 
         if (phase_stick_norm > 0.05f) {
-                phase = atan2f(-pitch, roll);
+                phase = atan2f(-pitch, yaw);
 
                 if (phase < 0.0f) {
                         phase += 2.0f * static_cast<float>(M_PI);
