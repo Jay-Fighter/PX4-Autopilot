@@ -46,7 +46,7 @@ GTAGS
 *.creator.user
 *.files
 *.includes
-**/.vsdcode
+**/.vscode
 
 # CLion ignores
 .idea

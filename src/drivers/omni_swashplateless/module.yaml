@@ -39,4 +39,16 @@ parameters:
             default: 0.0
             min: 0.0
             max: 360.0
+        # add by jayjie
+        OMNI_RC_TEST_IDX:
+            description:
+                short: RC manual test actuator index
+                long: |
+                    Selects which actuator receives the RC manual simulation output in grouped-output mode.
+                    The other actuators are held at zero.
+            type: int32
+            default: 0
+            min: 0
+            max: 3
+        # end
     #end add by jay

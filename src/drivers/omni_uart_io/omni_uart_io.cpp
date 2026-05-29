@@ -217,7 +217,7 @@ void OmniSerialInterface::ProcessSerialRx() {
         // }
         // end
 
-#ifdef OMNI_DEBUG
+#ifdef OMNI_DEBUG_SINGLE
         // add by jayjie
         if (_rx_accum_len + static_cast<size_t>(bytes_read) > RX_ACCUM_BUF_LEN) {
                 if (static_cast<size_t>(bytes_read) >= RX_ACCUM_BUF_LEN) {
@@ -421,7 +421,7 @@ void OmniSerialInterface::ProcessSerialTx() {
         // const bool outputs_enabled = true;
         // end
 
-#ifdef OMNI_DEBUG
+#ifdef OMNI_DEBUG_SINGLE
         if (_param_omni_frame_enable_flag.get() == PX4_OK) {
                 setMotorZeroPosAndRev();
                 return;

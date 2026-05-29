@@ -55,7 +55,7 @@ void OmniSwashPlateLess::Run() {
 }
 
 void OmniSwashPlateLess::modulationCmdCal() {
-#ifdef OMNI_DEBUG
+#ifdef OMNI_DEBUG_SINGLE
 
         actuator_test_s test_input;
         // Read QGC slider test signal
@@ -104,14 +104,50 @@ void OmniSwashPlateLess::modulationCmdCal() {
 
 #endif
 
-#ifndef OMNI_DEBUG
+#ifndef OMNI_DEBUG_SINGLE
         // TODO:另一个调制指令则通过姿态环的控制输出来计算，平均升力，相位角
 
+        // add by jayjie
+        if (_parameter_update_sub.updated()) {
+                parameter_update_s param_update;
+                _parameter_update_sub.copy(&param_update);
+
+                updateParams();
+                _single_modu_cmd_param.motor_lag_angle_qgc = _param_motor_delay_angle_bias.get() * DEG_2_RAD;
+        }
+        // end
+
+// add by jayjie
+#if OMNI_RC_MANUAL_SIM
+        manual_control_setpoint_s manual_control_setpoint{};
+
+        if (_manual_control_setpoint_sub.copy(&manual_control_setpoint) && manual_control_setpoint.valid &&
+            hrt_elapsed_time(&manual_control_setpoint.timestamp) < 500_ms) {
+                limit_and_update_outputs(manual_control_setpoint);
+
+        } else {
+                for (size_t i = 0; i < OMNI_ACTUATOR_NUM; i++) {
+                        _omni_outputs_cmd_groups.throttle_ua[i] = 0.0f;
+                        _omni_outputs_cmd_groups.throttle_us[i] = 0.0f;
+                        _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
+                        _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = 0.0f;
+                        _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = 0.0f;
+                        _omni_outputs_cmd_groups.index[i] = i;
+                }
+
+                _omni_outputs_cmd_groups.timestamp = hrt_absolute_time();
+                _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
+        }
+#else
+        // end
         omni_actuator_setpoint_s omni_actuator_setpoint;
 
         if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
                 limit_and_update_outputs(omni_actuator_setpoint);
         }
+// add by jayjie
+#endif
+// end
 #endif
 }
 
@@ -120,8 +156,8 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
         for (size_t i = 0; i < output.num_groups; i++) {
                 float ua = std::fabs(output.fz[i]) * ACTUATOR_CONTROLS_TO_DSHOT;
                 float us = sqrtf((output.fx[i] * output.fx[i] + output.fy[i] * output.fy[i]) / 2.0f) * ACTUATOR_CONTROLS_TO_DSHOT;
-                ua = 0.5*ACTUATOR_CONTROLS_TO_DSHOT;
-                us = 200;
+                // ua = 0.15*ACTUATOR_CONTROLS_TO_DSHOT;
+                // us = 0;
                 float phase = atan2f(output.fy[i], output.fx[i]);
                 if (phase < 0.0f) {
                         phase += 2.0f * static_cast<float>(M_PI);
@@ -143,6 +179,50 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
 
         _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
 }
+
+// add by jayjie
+void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint) {
+
+        const float throttle_norm = math::constrain((manual_control_setpoint.throttle + 1.0f) * 0.5f, 0.0f, 1.0f);
+        const float yaw_abs = math::constrain(std::fabs(manual_control_setpoint.yaw), 0.0f, 1.0f);
+
+        const float ua =
+            math::constrain(throttle_norm * ACTUATOR_CONTROLS_TO_DSHOT, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
+
+        const float us = math::constrain(yaw_abs * us_2_ua_ratio_max * ua, 0.0f, us_2_ua_ratio_max * ua);
+
+        const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
+        const float pitch = math::constrain(manual_control_setpoint.pitch, -1.0f, 1.0f);
+        const float phase_stick_norm = sqrtf(roll * roll + pitch * pitch);
+
+        float phase = 0.0f;
+
+        if (phase_stick_norm > 0.05f) {
+                phase = atan2f(-pitch, roll);
+
+                if (phase < 0.0f) {
+                        phase += 2.0f * static_cast<float>(M_PI);
+                }
+        }
+
+        const size_t active_index = static_cast<size_t>(math::constrain(_param_omni_rc_test_index.get(), int32_t{0}, int32_t{OMNI_ACTUATOR_NUM - 1}));
+
+        for (size_t i = 0; i < OMNI_ACTUATOR_NUM; i++) {
+                const bool active_output = (i == active_index);
+
+                _omni_outputs_cmd_groups.throttle_ua[i] = active_output ? ua : 0.0f;
+                _omni_outputs_cmd_groups.throttle_us[i] = active_output ? us : 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = active_output ? phase : 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = active_output ? _single_modu_cmd_param.motor_lag_angle_qgc : 0.0f;
+                _omni_outputs_cmd_groups.index[i] = i;
+        }
+
+        _omni_outputs_cmd_groups.timestamp = hrt_absolute_time();
+        _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
+}
+// end
+
 void OmniSwashPlateLess::limit_and_update_outputs() {
 
         // limit throttle ua

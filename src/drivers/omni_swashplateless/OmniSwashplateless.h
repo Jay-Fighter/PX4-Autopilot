@@ -24,6 +24,9 @@
 #include <uORB/topics/omni_outputs_cmd.h>
 #include <uORB/topics/omni_outputs_cmd_param.h>
 #include <uORB/topics/omni_actuator_setpoint.h>
+// add by jayjie
+#include <uORB/topics/manual_control_setpoint.h>
+// end
 
 #include "../omni_common/omni_debug.h"
 
@@ -46,9 +49,9 @@ constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 constexpr float us_2_ua_ratio_max = 0.25;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)
-#define THROTTLE_MAX (1800)
+#define THROTTLE_MAX (1300)
 #define THROTTLE_MIN (0)
-#define THROTTLE_SIN_AMP_LIMIT (750)
+#define THROTTLE_SIN_AMP_LIMIT (400)
 
 using time_literals::operator""_s;
 
@@ -79,6 +82,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
         void limit_and_update_outputs();
 
+        // add by jayjie
+        void limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint);
+        // end
+
         void reset_throttle_output();
 
         void publish_throttle();
@@ -97,6 +104,9 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         uORB::Subscription _actuator_output_sub{ORB_ID(actuator_test)};
         uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
         uORB::Subscription _omni_actuator_setpoint_sub{ORB_ID(omni_actuator_setpoint)};
+        // add by jayjie
+        uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
+        // end
 
         /*uORB Publisher*/
         uORB::Publication<omni_outputs_cmd_s> _single_output_cmd_pub{ORB_ID(omni_outputs_cmd)};
@@ -117,6 +127,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         DEFINE_PARAMETERS((ParamFloat<px4::params::OMNI_UA>)_param_omni_actuator_ctrls_ua,
                           (ParamFloat<px4::params::OMNI_US>)_param_omni_actuator_ctrls_us,
                           (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
-                          (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias)
+                          (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias,
+                          // add by jayjie
+                          (ParamInt<px4::params::OMNI_RC_TEST_IDX>)_param_omni_rc_test_index
+                          // end
+        )
 };
 #endif
