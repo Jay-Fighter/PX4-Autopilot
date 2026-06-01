@@ -185,17 +185,9 @@ float OmniSwashPlateLess::getManualTestMotorPhase(float phase_body, size_t motor
         const float two_pi = 2.0f * static_cast<float>(M_PI);
         static constexpr float inv_sqrt2 = 0.70710678118f;
         static constexpr float xh_axis_body[OMNI_ACTUATOR_NUM][2] = {
-                { inv_sqrt2, inv_sqrt2 },
-                { -inv_sqrt2, -inv_sqrt2 },
-                { inv_sqrt2, -inv_sqrt2 },
-                { -inv_sqrt2, inv_sqrt2 }
-        };
+            {inv_sqrt2, inv_sqrt2}, {-inv_sqrt2, -inv_sqrt2}, {inv_sqrt2, -inv_sqrt2}, {-inv_sqrt2, inv_sqrt2}};
         static constexpr float yh_axis_body[OMNI_ACTUATOR_NUM][2] = {
-                { -inv_sqrt2, inv_sqrt2 },
-                { inv_sqrt2, -inv_sqrt2 },
-                { inv_sqrt2, inv_sqrt2 },
-                { -inv_sqrt2, -inv_sqrt2 }
-        };
+            {inv_sqrt2, -inv_sqrt2}, {-inv_sqrt2, inv_sqrt2}, {inv_sqrt2, inv_sqrt2}, {-inv_sqrt2, -inv_sqrt2}};
 
         const float x_body = cosf(phase_body);
         const float y_body = sinf(phase_body);
@@ -214,7 +206,7 @@ float OmniSwashPlateLess::getManualTestMotorPhase(float phase_body, size_t motor
 
 void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint) {
 
-        const float throttle_norm = math::constrain((1.0f - manual_control_setpoint.throttle) * 0.5f, 0.0f, 1.0f);
+        const float throttle_norm = math::constrain((1.0f + manual_control_setpoint.throttle) * 0.5f, 0.0f, 1.0f);
         const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
         const float roll_abs = math::constrain(std::fabs(roll), 0.0f, 1.0f);
 
@@ -228,8 +220,8 @@ void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_
         const float phase_stick_norm = sqrtf(yaw * yaw + pitch * pitch);
 
         float phase = 0.0f;
-
-        if (phase_stick_norm > 0.05f) {
+        const bool phase_valid = phase_stick_norm > 0.05f;
+        if (phase_valid) {
                 phase = atan2f(yaw, pitch);
 
                 if (phase < 0.0f) {
@@ -242,10 +234,9 @@ void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_
 
         for (size_t i = 0; i < OMNI_ACTUATOR_NUM; i++) {
                 const bool active_output = test_all_outputs || (i == active_index);
-                const float motor_phase = getManualTestMotorPhase(phase, i);
+                const float motor_phase = phase_valid ? getManualTestMotorPhase(phase, i) : 0.0f;
 
-                // _omni_outputs_cmd_groups.throttle_ua[i] = active_output ? ua : 0.0f;
-		_omni_outputs_cmd_groups.throttle_ua[i] = phase;
+                _omni_outputs_cmd_groups.throttle_ua[i] = active_output ? ua : 0.0f;
                 _omni_outputs_cmd_groups.throttle_us[i] = active_output ? us : 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = active_output ? motor_phase : 0.0f;
