@@ -181,9 +181,40 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
 }
 
 // add by jayjie
+float OmniSwashPlateLess::getManualTestMotorPhase(float phase_body, size_t motor_index) const {
+        const float two_pi = 2.0f * static_cast<float>(M_PI);
+        static constexpr float inv_sqrt2 = 0.70710678118f;
+        static constexpr float xh_axis_body[OMNI_ACTUATOR_NUM][2] = {
+                { inv_sqrt2, inv_sqrt2 },
+                { -inv_sqrt2, -inv_sqrt2 },
+                { inv_sqrt2, -inv_sqrt2 },
+                { -inv_sqrt2, inv_sqrt2 }
+        };
+        static constexpr float yh_axis_body[OMNI_ACTUATOR_NUM][2] = {
+                { -inv_sqrt2, inv_sqrt2 },
+                { inv_sqrt2, -inv_sqrt2 },
+                { inv_sqrt2, inv_sqrt2 },
+                { -inv_sqrt2, -inv_sqrt2 }
+        };
+
+        const float x_body = cosf(phase_body);
+        const float y_body = sinf(phase_body);
+
+        const float x_local = x_body * xh_axis_body[motor_index][0] + y_body * xh_axis_body[motor_index][1];
+        const float y_local = x_body * yh_axis_body[motor_index][0] + y_body * yh_axis_body[motor_index][1];
+
+        float motor_phase = atan2f(y_local, x_local);
+
+        if (motor_phase < 0.0f) {
+                motor_phase += two_pi;
+        }
+
+        return motor_phase;
+}
+
 void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint) {
 
-        const float throttle_norm = math::constrain((1.0f + manual_control_setpoint.throttle) * 0.5f, 0.0f, 1.0f);
+        const float throttle_norm = math::constrain((1.0f - manual_control_setpoint.throttle) * 0.5f, 0.0f, 1.0f);
         const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
         const float roll_abs = math::constrain(std::fabs(roll), 0.0f, 1.0f);
 
@@ -199,22 +230,25 @@ void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_
         float phase = 0.0f;
 
         if (phase_stick_norm > 0.05f) {
-                phase = atan2f(-pitch, yaw);
+                phase = atan2f(yaw, pitch);
 
                 if (phase < 0.0f) {
                         phase += 2.0f * static_cast<float>(M_PI);
                 }
         }
 
+        const bool test_all_outputs = (_param_omni_rc_test_mode.get() == 1);
         const size_t active_index = static_cast<size_t>(math::constrain(_param_omni_rc_test_index.get(), int32_t{0}, int32_t{OMNI_ACTUATOR_NUM - 1}));
 
         for (size_t i = 0; i < OMNI_ACTUATOR_NUM; i++) {
-                const bool active_output = (i == active_index);
+                const bool active_output = test_all_outputs || (i == active_index);
+                const float motor_phase = getManualTestMotorPhase(phase, i);
 
-                _omni_outputs_cmd_groups.throttle_ua[i] = active_output ? ua : 0.0f;
+                // _omni_outputs_cmd_groups.throttle_ua[i] = active_output ? ua : 0.0f;
+		_omni_outputs_cmd_groups.throttle_ua[i] = phase;
                 _omni_outputs_cmd_groups.throttle_us[i] = active_output ? us : 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
-                _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = active_output ? phase : 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = active_output ? motor_phase : 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = active_output ? _single_modu_cmd_param.motor_lag_angle_qgc : 0.0f;
                 _omni_outputs_cmd_groups.index[i] = i;
         }

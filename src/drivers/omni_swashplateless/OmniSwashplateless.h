@@ -94,6 +94,10 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         void update_test_params();
 
        private:
+        // add by jayjie
+        float getManualTestMotorPhase(float phase_body, size_t motor_index) const;
+        // end
+
         /*Variable Definition*/
         omni_outputs_cmd_s _single_output_cmd{0};
         omni_outputs_cmd_param_s _single_modu_cmd_param{0};  // Only for QGC test
@@ -129,7 +133,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
                           (ParamFloat<px4::params::OMNI_PHASE>)_param_omni_actuator_ctrls_phase,
                           (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias,
                           // add by jayjie
-                          (ParamInt<px4::params::OMNI_RC_TEST_IDX>)_param_omni_rc_test_index
+                          (ParamInt<px4::params::OMNI_RC_TEST_IDX>)_param_omni_rc_test_index,
+                          (ParamInt<px4::params::OMNI_RC_TST_MODE>)_param_omni_rc_test_mode
                           // end
         )
 };

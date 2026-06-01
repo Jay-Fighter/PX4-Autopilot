@@ -50,5 +50,16 @@ parameters:
             default: 0
             min: 0
             max: 3
+        OMNI_RC_TST_MODE:
+            description:
+                short: RC manual test mode
+                long: |
+                    Selects the RC manual actuator test mode.
+                    0: single actuator test, only OMNI_RC_TEST_IDX receives output.
+                    1: all actuator test, all four actuators receive output.
+            type: int32
+            default: 0
+            min: 0
+            max: 1
         # end
     #end add by jay
