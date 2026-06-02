@@ -95,7 +95,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
        private:
         // add by jayjie
-        float getManualTestMotorPhase(float phase_body, size_t motor_index) const;
+        float getMotorPhaseFromBodyPhase(float phase_body, size_t motor_index) const;
         // end
 
         /*Variable Definition*/
