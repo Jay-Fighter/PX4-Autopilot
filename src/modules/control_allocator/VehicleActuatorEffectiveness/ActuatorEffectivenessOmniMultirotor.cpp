@@ -97,9 +97,9 @@ bool ActuatorEffectivenessOmniMultirotor::getEffectivenessMatrix(Configuration& 
 
                 effectiveness(1, base + 2) = position(0) * ct;  // My from Fz
 
-                effectiveness(2, base + 0) = -position(1) * ct;  // Mz from Fx
-                effectiveness(2, base + 1) = position(0) * ct;   // Mz from Fy
-                effectiveness(2, base + 2) = ct * km * axis(2);  // Mz from Fy
+                // effectiveness(2, base + 0) = -position(1) * ct;  // Mz from Fx
+                // effectiveness(2, base + 1) = position(0) * ct;   // Mz from Fy
+                effectiveness(2, base + 2) = -ct * km * axis(2);  // Mz from Fz
         }
         // configuration.actuatorsAdded(ActuatorType::MOTORS, 12);
 

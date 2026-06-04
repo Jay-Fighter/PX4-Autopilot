@@ -19,6 +19,7 @@
 #include <uORB/topics/actuator_test.h>
 #include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
+#include <uORB/topics/actuator_motors.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/omni_outputs_cmd_groups.h>
 #include <uORB/topics/omni_outputs_cmd.h>
@@ -84,6 +85,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
 
         // add by jayjie
         void limit_and_update_outputs(const manual_control_setpoint_s& manual_control_setpoint);
+        void limit_and_update_outputs(const actuator_motors_s& actuator_motors);
         // end
 
         void reset_throttle_output();
@@ -110,6 +112,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
         uORB::Subscription _omni_actuator_setpoint_sub{ORB_ID(omni_actuator_setpoint)};
         // add by jayjie
         uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
+        uORB::Subscription _actuator_motors_sub{ORB_ID(actuator_motors)};
         // end
 
         /*uORB Publisher*/
@@ -134,7 +137,8 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
                           (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias,
                           // add by jayjie
                           (ParamInt<px4::params::OMNI_RC_TEST_IDX>)_param_omni_rc_test_index,
-                          (ParamInt<px4::params::OMNI_RC_TST_MODE>)_param_omni_rc_test_mode
+                          (ParamInt<px4::params::OMNI_RC_TST_MODE>)_param_omni_rc_test_mode,
+                          (ParamInt<px4::params::CA_AIRFRAME>)_param_ca_airframe
                           // end
         )
 };

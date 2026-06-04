@@ -10,6 +10,9 @@
 
 constexpr float DEG_2_RAD = static_cast<float>(M_PI) / 180.0f;
 constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
+// add by jayjie
+static constexpr int32_t CA_AIRFRAME_MULTIROTOR = 0;
+// end
 
 OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default) {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
@@ -140,11 +143,22 @@ void OmniSwashPlateLess::modulationCmdCal() {
         }
 #else
         // end
-        omni_actuator_setpoint_s omni_actuator_setpoint;
+        // add by jayjie
+        if (_param_ca_airframe.get() == CA_AIRFRAME_MULTIROTOR) {
+                actuator_motors_s actuator_motors{};
 
-        if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
-                limit_and_update_outputs(omni_actuator_setpoint);
+                if (_actuator_motors_sub.update(&actuator_motors)) {
+                        limit_and_update_outputs(actuator_motors);
+                }
+
+        } else {
+                omni_actuator_setpoint_s omni_actuator_setpoint{};
+
+                if (_omni_actuator_setpoint_sub.update(&omni_actuator_setpoint)) {
+                        limit_and_update_outputs(omni_actuator_setpoint);
+                }
         }
+        // end
 // add by jayjie
 #endif
 // end
@@ -195,6 +209,25 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
 
         _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
 }
+
+// add by jayjie
+void OmniSwashPlateLess::limit_and_update_outputs(const actuator_motors_s& actuator_motors) {
+        for (size_t i = 0; i < OMNI_ACTUATOR_NUM; i++) {
+                const float motor_control = PX4_ISFINITE(actuator_motors.control[i]) ? actuator_motors.control[i] : 0.0f;
+                const float motor_throttle = math::constrain(motor_control, 0.0f, 1.0f);
+
+                _omni_outputs_cmd_groups.throttle_ua[i] = motor_throttle * static_cast<float>(ACTUATOR_CONTROLS_TO_DSHOT);
+                _omni_outputs_cmd_groups.throttle_us[i] = 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = 0.0f;
+                _omni_outputs_cmd_groups.index[i] = i;
+        }
+
+        _omni_outputs_cmd_groups.timestamp = hrt_absolute_time();
+        _omni_outputs_cmd_groups_pub.publish(_omni_outputs_cmd_groups);
+}
+// end
 
 // add by jayjie
 float OmniSwashPlateLess::getMotorPhaseFromBodyPhase(float phase_body, size_t motor_index) const {
