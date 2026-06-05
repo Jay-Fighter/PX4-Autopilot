@@ -69,6 +69,9 @@ if(CONFIG_MODULES_MC_RATE_CONTROL)
 		4061_atl_mantis_edu
 		4071_ifo
 		4073_ifo-s
+		# add by jayjie
+		4074_omni_virtual_force_quad
+		# end
 		4500_clover4
 		4601_droneblocks_dexi_5
 		4901_crazyflie21

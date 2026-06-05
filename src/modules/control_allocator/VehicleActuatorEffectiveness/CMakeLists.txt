@@ -26,12 +26,16 @@ px4_add_library(VehicleActuatorEffectiveness
 	ActuatorEffectivenessTailsitterVTOL.cpp
 	ActuatorEffectivenessTailsitterVTOL.hpp
 	ActuatorEffectivenessRoverAckermann.hpp
-	ActuatorEffectivenessRoverAckermann.cpp
-	ActuatorEffectivenessOmniMultirotor.hpp
-	ActuatorEffectivenessOmniMultirotor.cpp
-	RpmControl.hpp
-	RpmControl.cpp
-)
+		ActuatorEffectivenessRoverAckermann.cpp
+		ActuatorEffectivenessOmniMultirotor.hpp
+		ActuatorEffectivenessOmniMultirotor.cpp
+		# add by jayjie
+		ActuatorEffectivenessOmniVirtualForce.hpp
+		ActuatorEffectivenessOmniVirtualForce.cpp
+		# end
+		RpmControl.hpp
+		RpmControl.cpp
+	)
 
 target_compile_options(VehicleActuatorEffectiveness PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
 target_include_directories(VehicleActuatorEffectiveness PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -34,6 +34,9 @@ parameters:
                 14: Spacecraft 2D
                 15: Spacecraft 3D
                 16: Omni_Multirotor
+                # add by jayjie
+                17: Omni Virtual Force
+                # end
             default: 0
 
         CA_METHOD:
@@ -1232,4 +1235,3 @@ mixer:
                             label: 'Axis Z'
                             function: 'axisz'
                             advanced: true
-

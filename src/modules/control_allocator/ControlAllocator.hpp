@@ -54,6 +54,9 @@
 #include <ActuatorEffectivenessHelicopter.hpp>
 #include <ActuatorEffectivenessHelicopterCoaxial.hpp>
 #include <ActuatorEffectivenessOmniMultirotor.hpp>
+// add by jayjie
+#include <ActuatorEffectivenessOmniVirtualForce.hpp>
+// end
 
 #include <ControlAllocation.hpp>
 #include <ControlAllocationPseudoInverse.hpp>
@@ -162,6 +165,9 @@ private:
 		SPACECRAFT_2D = 13,
 		SPACECRAFT_3D = 14,
 		OMNI_MULTIROTOR = 16,
+		// add by jayjie
+		OMNI_VIRTUAL_FORCE = 17,
+		// end
 	};
 
 	enum class FailureMode {

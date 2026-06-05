@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# @name Omni Virtual Force Quad
+#
+# @type Quadrotor x
+# @class Copter
+#
+# @maintainer jayjie
+#
+
+# add by jayjie
+. ${R}etc/init.d/rc.mc_defaults
+
+# Use the new 12-channel virtual force allocator:
+# [Fx0, Fy0, Fz0, Fx1, Fy1, Fz1, Fx2, Fy2, Fz2, Fx3, Fy3, Fz3].
+param set-default CA_AIRFRAME 17
+param set-default CA_METHOD 0
+
+# Fx/Fy virtual force components are signed, while Fz components are normal
+# one-way rotor thrust variables and must stay in [0, 1].
+param set-default CA_R_REV 1755
+
+# Position controller should output body-frame 3D thrust for the omni allocator.
+param set-default MPC_POS_BACKEND 1
+
+# Square quadrotor X PX4 numbering. Tune these parameters to the real geometry.
+param set-default CA_ROTOR_COUNT 4
+param set-default CA_ROTOR0_PX 1
+param set-default CA_ROTOR0_PY 1
+param set-default CA_ROTOR1_PX -1
+param set-default CA_ROTOR1_PY -1
+param set-default CA_ROTOR2_PX 1
+param set-default CA_ROTOR2_PY -1
+param set-default CA_ROTOR2_KM -0.05
+param set-default CA_ROTOR3_PX -1
+param set-default CA_ROTOR3_PY 1
+param set-default CA_ROTOR3_KM -0.05
+# end

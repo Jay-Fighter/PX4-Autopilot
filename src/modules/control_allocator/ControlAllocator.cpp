@@ -277,6 +277,12 @@ ControlAllocator::update_effectiveness_source()
 			tmp = new ActuatorEffectivenessOmniMultirotor(this);
 			break;
 
+		// add by jayjie
+		case EffectivenessSource::OMNI_VIRTUAL_FORCE:
+			tmp = new ActuatorEffectivenessOmniVirtualForce(this);
+			break;
+		// end
+
 		default:
 			PX4_ERR("Unknown airframe");
 			break;
@@ -413,12 +419,12 @@ ControlAllocator::Run()
 		c[0](3) = _thrust_sp(0);
 		c[0](4) = _thrust_sp(1);
 		c[0](5) = _thrust_sp(2);
-		c[0](0) = 0.0f;
-		c[0](1) = 0.0f;
-		c[0](2) = +0.02f; // 正 yaw torque
-		c[0](3) = 0.0f;
-		c[0](4) = 0.0f;
-		c[0](5) = -0.2f;
+		// c[0](0) = 0.0f;
+		// c[0](1) = 0.0f;
+		// c[0](2) = +0.02f; // 正 yaw torque
+		// c[0](3) = 0.0f;
+		// c[0](4) = 0.0f;
+		// c[0](5) = -0.2f;
 
 		if (_num_control_allocation > 1) {
 			if (_vehicle_torque_setpoint1_sub.copy(&vehicle_torque_setpoint)) {

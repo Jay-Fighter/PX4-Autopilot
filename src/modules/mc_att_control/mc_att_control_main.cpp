@@ -199,7 +199,7 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt)
 	attitude_setpoint.thrust_body[2] = -throttle_curve(_manual_control_setpoint.throttle);
 
 	attitude_setpoint.timestamp = hrt_absolute_time();
-	_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
+	// _vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
 }
 
 void

@@ -50,7 +50,7 @@ constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 constexpr float us_2_ua_ratio_max = 0.25;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)
-#define THROTTLE_MAX (1300)
+#define THROTTLE_MAX (1500)
 #define THROTTLE_MIN (0)
 #define THROTTLE_SIN_AMP_LIMIT (400)
 
