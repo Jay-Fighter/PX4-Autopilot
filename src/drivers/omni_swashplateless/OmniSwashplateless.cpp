@@ -220,7 +220,7 @@ void OmniSwashPlateLess::limit_and_update_outputs(const actuator_motors_s& actua
                 _omni_outputs_cmd_groups.throttle_us[i] = 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_flap[i] = 0.0f;
                 _omni_outputs_cmd_groups.throttle_ctrls_phase[i] = 0.0f;
-                _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = 0.0f;
+                _omni_outputs_cmd_groups.throttle_ctrls_lag_angle[i] = 0.0f; 
                 _omni_outputs_cmd_groups.index[i] = i;
         }
 
