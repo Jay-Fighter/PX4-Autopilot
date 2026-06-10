@@ -130,7 +130,7 @@
                 "${workspaceFolder}/validation/module_schema.yaml": "${workspaceFolder}/src/modules/*/module.yaml"
         },
         "clangd.arguments": [
-                "--compile-commands-dir=${workspaceFolder}/build/px4_sitl_default/"
+                "--compile-commands-dir=${workspaceFolder}/build/px4_fmu-v5_default"
         ],
         "python.autoComplete.extraPaths": [
                 "/home/jay-jie/catkin_ws/install/px4_msgs/local/lib/python3.10/dist-packages",

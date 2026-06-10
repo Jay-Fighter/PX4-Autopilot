@@ -46,7 +46,7 @@
 
 #define OMNI_ACTUATOR_NUM 4
 
-constexpr uint16_t DSHOT_THROTTLE_MIN = 50;
+constexpr uint16_t DSHOT_THROTTLE_MIN = 70;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 constexpr float us_2_ua_ratio_max = 0.25;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)
@@ -137,8 +137,7 @@ class OmniSwashPlateLess : public ModuleBase<OmniSwashPlateLess>, public ModuleP
                           (ParamFloat<px4::params::MOTOR_DELAY_BIAS>)_param_motor_delay_angle_bias,
                           // add by jayjie
                           (ParamInt<px4::params::OMNI_RC_TEST_IDX>)_param_omni_rc_test_index,
-                          (ParamInt<px4::params::OMNI_RC_TST_MODE>)_param_omni_rc_test_mode,
-                          (ParamInt<px4::params::CA_AIRFRAME>)_param_ca_airframe
+                          (ParamInt<px4::params::OMNI_RC_TST_MODE>)_param_omni_rc_test_mode, (ParamInt<px4::params::CA_AIRFRAME>)_param_ca_airframe
                           // end
         )
 };
