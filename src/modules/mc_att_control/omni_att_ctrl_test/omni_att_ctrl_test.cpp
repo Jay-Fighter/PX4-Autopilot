@@ -46,6 +46,9 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
+// add by jayjie
+#include <uORB/topics/vehicle_attitude.h>
+// end
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 
 using namespace time_literals;
@@ -66,15 +69,25 @@ public:
 private:
 	void Run() override;
 	void update_schedule();
+	// add by jayjie
+	bool update_yaw_hold();
+	// end
 	void publish_attitude_setpoint();
 
 	uORB::Publication<vehicle_attitude_setpoint_s> _vehicle_attitude_setpoint_pub{ORB_ID(vehicle_attitude_setpoint)};
+	// add by jayjie
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	// end
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
 
 	hrt_abstime _publish_interval_us{10000};
 	uint32_t _publish_count{0};
+	// add by jayjie
+	bool _yaw_hold_valid{false};
+	float _yaw_hold_rad{0.f};
+	// end
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::OMNI_ATT_EN>) _param_omni_att_en,
@@ -100,6 +113,9 @@ OmniAttCtrlTest::~OmniAttCtrlTest()
 bool OmniAttCtrlTest::init()
 {
 	updateParams();
+	// add by jayjie
+	update_yaw_hold();
+	// end
 	update_schedule();
 	return true;
 }
@@ -118,13 +134,36 @@ void OmniAttCtrlTest::update_schedule()
 	}
 }
 
+// add by jayjie
+bool OmniAttCtrlTest::update_yaw_hold()
+{
+	if (_yaw_hold_valid) {
+		return true;
+	}
+
+	vehicle_attitude_s vehicle_attitude{};
+
+	if (_vehicle_attitude_sub.copy(&vehicle_attitude)) {
+		const matrix::Quatf q_att(vehicle_attitude.q);
+		const matrix::Eulerf euler_att(q_att);
+		_yaw_hold_rad = euler_att.psi();
+		_yaw_hold_valid = true;
+		return true;
+	}
+
+	return false;
+}
+// end
+
 void OmniAttCtrlTest::publish_attitude_setpoint()
 {
 	vehicle_attitude_setpoint_s attitude_setpoint{};
 
 	const float roll = math::radians(_param_omni_att_roll.get());
 	const float pitch = math::radians(_param_omni_att_pitch.get());
-	const float yaw = math::radians(_param_omni_att_yaw.get());
+	// add by jayjie
+	const float yaw = _yaw_hold_rad;
+	// end
 
 	const matrix::Quatf q_sp{matrix::Eulerf{roll, pitch, yaw}};
 	q_sp.copyTo(attitude_setpoint.q_d);
@@ -158,7 +197,11 @@ void OmniAttCtrlTest::Run()
 		update_schedule();
 	}
 
-	if (_param_omni_att_en.get() != 0) {
+	// add by jayjie
+	update_yaw_hold();
+	// end
+
+	if (_param_omni_att_en.get() != 0 && _yaw_hold_valid) {
 		publish_attitude_setpoint();
 	}
 
@@ -190,11 +233,15 @@ int OmniAttCtrlTest::task_spawn(int argc, char *argv[])
 
 int OmniAttCtrlTest::print_status()
 {
+	// add by jayjie
+	const float yaw_status_deg = _yaw_hold_valid ? math::degrees(_yaw_hold_rad) : _param_omni_att_yaw.get();
+	// end
+
 	PX4_INFO("enabled: %d", static_cast<int>(_param_omni_att_en.get()));
 	PX4_INFO("rpy deg: roll %.2f pitch %.2f yaw %.2f",
 		 static_cast<double>(_param_omni_att_roll.get()),
 		 static_cast<double>(_param_omni_att_pitch.get()),
-		 static_cast<double>(_param_omni_att_yaw.get()));
+		 static_cast<double>(yaw_status_deg));
 	PX4_INFO("thrust_z: %.3f rate: %.1f Hz published: %" PRIu32,
 		 static_cast<double>(_param_omni_att_thr_z.get()),
 		 static_cast<double>(_param_omni_att_rate.get()),
