@@ -375,6 +375,9 @@ void OmniSerialInterface::ProcessSerialRx() {
 
                 motors_telemetry.timestamp = hrt_absolute_time();
                 _motors_telemetry_pub.publish(motors_telemetry);
+                // add by jayjie
+                PublishEscStatusFromOmniTelemetry(motors_telemetry);
+                // end
 
                 memmove(_rx_accum, _rx_accum + FRAME_LEN_OUTER_RX, _rx_accum_len - FRAME_LEN_OUTER_RX);
                 _rx_accum_len -= FRAME_LEN_OUTER_RX;
@@ -397,7 +400,6 @@ void OmniSerialInterface::ProcessSerialRx() {
 
         return;
 }
-
 
 float OmniSerialInterface::bytesToFloat(const uint8_t* bytes) {
         uint8_t b[4] = {bytes[3], bytes[2], bytes[1], bytes[0]};
@@ -567,6 +569,29 @@ uint8_t OmniSerialInterface::getEncoderReverseFlagForMotor(uint8_t motor_index) 
         return static_cast<uint8_t>(base_flag == 0 ? 1 : 0);
 }
 // end
+
+void OmniSerialInterface::PublishEscStatusFromOmniTelemetry(const omni_motors_telemetry_s& motors_telemetry) {
+        esc_status_s esc_status{};
+        esc_status.timestamp = motors_telemetry.timestamp;
+        esc_status.counter = ++_esc_status_counter;
+        esc_status.esc_count = 4;
+        esc_status.esc_connectiontype = esc_status_s::ESC_CONNECTION_TYPE_SERIAL;
+        esc_status.esc_online_flags = 0x0f;
+        esc_status.esc_armed_flags = 0x0f;
+
+        for (uint8_t i = 0; i < 4; i++) {
+                esc_report_s& esc = esc_status.esc[i];
+
+                esc.timestamp = motors_telemetry.timestamp;
+                esc.esc_rpm = static_cast<int32_t>(roundf(motors_telemetry.obs_rpm[i]));
+                esc.esc_voltage = motors_telemetry.esc_voltage[i];
+                esc.esc_current = motors_telemetry.esc_current[i];
+                esc.esc_address = i + 1;
+                esc.esc_cmdcount = static_cast<uint8_t>(_esc_status_counter & 0xff);
+        }
+
+        _esc_status_pub.publish(esc_status);
+}
 
 void OmniSerialInterface::packThrottleCmdGroup(const omni_outputs_cmd_groups_s& packet, uint8_t* frame, uint8_t& frame_len) {
         frame[frame_len++] = FRAME_OUTER_TX_HEADER_1;

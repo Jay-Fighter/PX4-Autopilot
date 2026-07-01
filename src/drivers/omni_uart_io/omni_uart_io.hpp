@@ -45,6 +45,7 @@
 #include <uORB/topics/omni_outputs_cmd_groups.h>
 #include <uORB/topics/omni_outputs_cmd_frame.h>
 #include <uORB/topics/actuator_armed.h>
+#include <uORB/topics/esc_status.h>
 
 #include "../omni_common/omni_debug.h"
 #include <uORB/topics/parameter_update.h>
@@ -155,6 +156,8 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
         uint8_t getEncoderReverseFlagForMotor(uint8_t motor_index) const;
         // end
 
+        void PublishEscStatusFromOmniTelemetry(const omni_motors_telemetry_s& motors_telemetry);
+
        private:
         char _port_in_use[20]{};
         // add by jayjie
@@ -185,6 +188,9 @@ class OmniSerialInterface : public ModuleBase<OmniSerialInterface>, public Modul
         uORB::Publication<omni_motor_telemetry_s> _motor_telemetry_pub{ORB_ID(omni_motor_telemetry)};
         uORB::Publication<omni_motors_telemetry_s> _motors_telemetry_pub{ORB_ID(omni_motors_telemetry)};
         uORB::Publication<omni_outputs_cmd_frame_s> _omni_outputs_cmd_frame_pub{ORB_ID(omni_outputs_cmd_frame)};
+        uORB::Publication<esc_status_s> _esc_status_pub{ORB_ID(esc_status)};
+        uint16_t _esc_status_counter{0};
+
 
         perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME ": cycle")};
         perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME ": update interval")};
