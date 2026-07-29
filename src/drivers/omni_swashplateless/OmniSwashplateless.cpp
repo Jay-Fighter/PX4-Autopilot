@@ -14,6 +14,17 @@ constexpr float RAD_2_DEG = 180.0f / static_cast<float>(M_PI);
 static constexpr int32_t CA_AIRFRAME_MULTIROTOR = 0;
 // end
 
+// add by jayjie
+static float mapToDshotThrottle(float throttle) {
+        if (!PX4_ISFINITE(throttle) || throttle <= FLT_EPSILON) {
+                return 0.0f;
+        }
+
+        return math::constrain(throttle + static_cast<float>(DSHOT_THROTTLE_OFFSET),
+                               static_cast<float>(DSHOT_THROTTLE_OFFSET), static_cast<float>(THROTTLE_MAX));
+}
+// end
+
 OmniSwashPlateLess::OmniSwashPlateLess() : ModuleParams(nullptr), ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default) {
         _single_modu_cmd_param.actuator_ctrls_ua_qgc = _param_omni_actuator_ctrls_ua.get();
         _single_modu_cmd_param.actuator_ctrls_us_qgc = _param_omni_actuator_ctrls_us.get();
@@ -186,16 +197,19 @@ void OmniSwashPlateLess::limit_and_update_outputs(omni_actuator_setpoint_s& outp
                         phase_motor = getMotorPhaseFromBodyPhase(phase_body, i);
                 }
 
-                ua = math::constrain(ua, 0.0f, static_cast<float>(THROTTLE_MAX));
-
-                // 防止 DShot 落入 1~47 command 区间，0 仍然表示停转
-                if (ua > FLT_EPSILON && ua < static_cast<float>(DSHOT_THROTTLE_MIN)) {
-                        ua = static_cast<float>(DSHOT_THROTTLE_MIN);
-                }
+                // add by jayjie
+                ua = mapToDshotThrottle(ua);
+                // end
 
                 _omni_outputs_cmd_groups.throttle_ua[i] = ua;
 
-                _omni_outputs_cmd_groups.throttle_us[i] = math::constrain(us, 0.0f, us_2_ua_ratio_max * _omni_outputs_cmd_groups.throttle_ua[i]);
+                // add by jayjie
+                const float us_limit = ua > FLT_EPSILON
+                                       ? math::min(us_2_ua_ratio_max * ua,
+                                                       ua - static_cast<float>(DSHOT_THROTTLE_OFFSET))
+                                       : 0.0f;
+                _omni_outputs_cmd_groups.throttle_us[i] = math::constrain(us, 0.0f, math::max(us_limit, 0.0f));
+                // end
 
                 float flap = 0.0f;
 
@@ -223,11 +237,10 @@ void OmniSwashPlateLess::limit_and_update_outputs(const actuator_motors_s& actua
                 const float motor_control = PX4_ISFINITE(actuator_motors.control[i]) ? actuator_motors.control[i] : 0.0f;
                 const float motor_throttle = math::constrain(motor_control, 0.0f, 1.0f);
 
-                float throttle_ua = motor_throttle * static_cast<float>(ACTUATOR_CONTROLS_TO_DSHOT);
-                // 防止Dshot落入0-47区间
-                if (throttle_ua > FLT_EPSILON) {
-                        throttle_ua = math::constrain(throttle_ua, static_cast<float>(DSHOT_THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
-                }
+                // add by jayjie
+                const float throttle_ua =
+                    mapToDshotThrottle(motor_throttle * static_cast<float>(ACTUATOR_CONTROLS_TO_DSHOT));
+                // end
 
                 _omni_outputs_cmd_groups.throttle_ua[i] = throttle_ua;
                 _omni_outputs_cmd_groups.throttle_us[i] = 0.0f;
@@ -272,14 +285,14 @@ void OmniSwashPlateLess::limit_and_update_outputs(const manual_control_setpoint_
         const float roll = math::constrain(manual_control_setpoint.roll, -1.0f, 1.0f);
         const float roll_abs = math::constrain(std::fabs(roll), 0.0f, 1.0f);
 
-        float ua = math::constrain(throttle_norm * ACTUATOR_CONTROLS_TO_DSHOT, 0.0f, static_cast<float>(THROTTLE_MAX));
-
-        // 防止 DShot 落入 1~47 command 区间
-        if (ua > FLT_EPSILON && ua < static_cast<float>(DSHOT_THROTTLE_MIN)) {
-                ua = static_cast<float>(DSHOT_THROTTLE_MIN);
-        }
-
-        const float us = math::constrain(roll_abs * us_2_ua_ratio_max * ua, 0.0f, us_2_ua_ratio_max * ua);
+        // add by jayjie
+        const float ua = mapToDshotThrottle(throttle_norm * ACTUATOR_CONTROLS_TO_DSHOT);
+        const float us_limit = ua > FLT_EPSILON
+                               ? math::min(us_2_ua_ratio_max * ua, ua - static_cast<float>(DSHOT_THROTTLE_OFFSET))
+                               : 0.0f;
+        const float us =
+            math::constrain(roll_abs * us_2_ua_ratio_max * ua, 0.0f, math::max(us_limit, 0.0f));
+        // end
 
         const float yaw = math::constrain(manual_control_setpoint.yaw, -1.0f, 1.0f);
         const float pitch = math::constrain(manual_control_setpoint.pitch, -1.0f, 1.0f);
@@ -319,16 +332,25 @@ void OmniSwashPlateLess::limit_and_update_outputs() {
 
         // limit throttle ua
         float ua_temp = _single_modu_cmd_param.actuator_ctrls_ua_qgc * ACTUATOR_CONTROLS_TO_DSHOT;
-        _single_output_cmd.throttle_ua = math::constrain(ua_temp, static_cast<float>(THROTTLE_MIN), static_cast<float>(THROTTLE_MAX));
+        // add by jayjie
+        _single_output_cmd.throttle_ua = mapToDshotThrottle(ua_temp);
+        // end
 
         // limit throttle us
         _single_output_cmd.throttle_us = static_cast<float>(_single_modu_cmd_param.actuator_ctrls_us_qgc) * _single_output_cmd.throttle_ua;
         float throttle_margin = THROTTLE_MAX - _single_output_cmd.throttle_ua;
+        // add by jayjie
+        const float dshot_command_margin = _single_output_cmd.throttle_ua > FLT_EPSILON
+                                           ? _single_output_cmd.throttle_ua - static_cast<float>(DSHOT_THROTTLE_OFFSET)
+                                           : 0.0f;
+        // end
 
         // limit us based on the throttle margin
-        if (_single_output_cmd.throttle_us > _single_output_cmd.throttle_ua) {
-                _single_output_cmd.throttle_us = _single_output_cmd.throttle_ua;
+        // add by jayjie
+        if (_single_output_cmd.throttle_us > dshot_command_margin) {
+                _single_output_cmd.throttle_us = dshot_command_margin;
         }
+        // end
 
         if (_single_output_cmd.throttle_us > throttle_margin) {
                 _single_output_cmd.throttle_us = throttle_margin;

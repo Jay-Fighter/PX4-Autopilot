@@ -46,7 +46,7 @@
 
 #define OMNI_ACTUATOR_NUM 4
 
-constexpr uint16_t DSHOT_THROTTLE_MIN = 70;
+constexpr uint16_t DSHOT_THROTTLE_OFFSET = 48;
 constexpr uint16_t DSHOT_THROTTLE_MAX = 1800;
 constexpr float us_2_ua_ratio_max = 0.25;
 #define ACTUATOR_CONTROLS_TO_DSHOT (2000)
