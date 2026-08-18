@@ -366,8 +366,6 @@ void OmniSerialInterface::ProcessSerialRx() {
                                 motors_telemetry.throttle_u[i] = single.throttle_u;
                                 motors_telemetry.throttle_phase[i] = single.throttle_phase;
                                 motors_telemetry.throttle_lag_angle[i] = single.throttle_lag_angle;
-                                motors_telemetry.esc_voltage[i] = single.esc_voltage;
-                                motors_telemetry.esc_current[i] = single.esc_current;
                         }
 
                         subframe += FRAME_LEN_RX;
@@ -646,8 +644,6 @@ bool OmniSerialInterface::parseSingleRxFrame(const uint8_t* frame, bool check_ch
         uint16_t u = bytesToUint16(&frame[14]);
         float phase = bytesToFloat(&frame[16]);
         float lag_angle = bytesToFloat(&frame[20]);
-        uint16_t esc_voltage = bytesToUint16(&frame[24]);
-        uint16_t esc_current = bytesToUint16(&frame[26]);
 
         omni_motor_telemetry_s* target = out ? out : &_motor_telemetry;
         target->index = motor_index;
@@ -659,8 +655,11 @@ bool OmniSerialInterface::parseSingleRxFrame(const uint8_t* frame, bool check_ch
         target->throttle_u = static_cast<float>(u);
         target->throttle_phase = phase;
         target->throttle_lag_angle = lag_angle;
-        target->esc_voltage = static_cast<float>(esc_voltage) * 0.01f;
-        target->esc_current = static_cast<float>(esc_current) * 0.01f;
+        // add by jayjie
+        // The current feedback protocol does not provide ESC voltage or current.
+        target->esc_voltage = 0.0f;
+        target->esc_current = 0.0f;
+        // end
         target->timestamp = hrt_absolute_time();
 
         if (publish_single) {

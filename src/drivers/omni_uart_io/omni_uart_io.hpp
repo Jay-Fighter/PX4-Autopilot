@@ -69,7 +69,9 @@
 #define MOTOR_INIT_ENABLED 0x01   // 电机初始化设置完成
 
 // Packet length based on the protocol defined
-const ssize_t FRAME_LEN_RX = 31;  // single sub-frame
+// add by jayjie
+const ssize_t FRAME_LEN_RX = 27;  // single sub-frame without ESC voltage and current
+// end
 const ssize_t FRAME_LEN_TX = 21;  // single sub-frame
 const ssize_t FRAME_LEN_OUTER_TX = 2 + (4 * FRAME_LEN_TX) + 1 + 2;
 const ssize_t FRAME_LEN_OUTER_RX = 2 + (4 * FRAME_LEN_RX) + 1 + 2;
