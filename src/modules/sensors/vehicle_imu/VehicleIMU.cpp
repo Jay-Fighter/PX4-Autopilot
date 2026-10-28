@@ -58,6 +58,12 @@ VehicleIMU::VehicleIMU(int instance, uint8_t accel_index, uint8_t gyro_index, co
 
 	_accel_integrator.set_reset_interval(_imu_integration_interval_us);
 	_accel_integrator.set_reset_samples(sensor_accel_s::ORB_QUEUE_LENGTH);
+	// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+	_accel_raw_integrator.set_reset_interval(_imu_integration_interval_us);
+	_accel_raw_integrator.set_reset_samples(sensor_accel_s::ORB_QUEUE_LENGTH);
+#endif
+	// end
 
 	_gyro_integrator.set_reset_interval(_imu_integration_interval_us);
 	_gyro_integrator.set_reset_samples(sensor_gyro_s::ORB_QUEUE_LENGTH);
@@ -89,6 +95,19 @@ bool VehicleIMU::Start()
 {
 	// force initial updates
 	ParametersUpdate(true);
+	// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+
+	// Snapshot reboot-required configuration at startup; parameter notifications
+	// must not change the estimator's filter bank while it is running.
+	if (_param_imu_acc_dnf_en.get()
+	    && !_accel_rpm_notch.configure(_param_imu_acc_dnf_hmc.get(), _param_imu_acc_dnf_bw.get(),
+					   _param_imu_acc_dnf_min.get())) {
+		PX4_ERR("ACC RPM notch initialization failed, bypassing (IMU %u)", _instance);
+	}
+
+#endif
+	// end
 
 	_sensor_gyro_sub.registerCallback();
 	ScheduleNow();
@@ -171,6 +190,18 @@ void VehicleIMU::Run()
 	const hrt_abstime now_us = hrt_absolute_time();
 
 	const bool parameters_updated = ParametersUpdate();
+	// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+
+	if (_accel_rpm_notch.enabled()) {
+		esc_status_s esc_status;
+		const bool esc_updated = _esc_status_sub.update(&esc_status);
+		// Always check expiry, including complete loss of the ESC publisher.
+		_accel_rpm_notch.update(now_us, esc_updated ? &esc_status : nullptr);
+	}
+
+#endif
+	// end
 
 	if (!_accel_calibration.enabled() || !_gyro_calibration.enabled()) {
 		_sensor_gyro_sub.unregisterCallback();
@@ -286,6 +317,12 @@ bool VehicleIMU::UpdateAccel()
 	sensor_accel_s accel;
 
 	if (_sensor_accel_sub.update(&accel)) {
+		// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+		const bool accel_gap = _sensor_accel_sub.get_last_generation() != _accel_last_generation + 1;
+#endif
+
+		// end
 		if (_sensor_accel_sub.get_last_generation() != _accel_last_generation + 1) {
 			_data_gap = true;
 			perf_count(_accel_generation_gap_perf);
@@ -353,7 +390,22 @@ bool VehicleIMU::UpdateAccel()
 
 		const Vector3f accel_raw{accel.x, accel.y, accel.z};
 		_raw_accel_mean.update(accel_raw);
-		_accel_integrator.put(accel_raw, dt);
+		// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+
+		if (_accel_rpm_notch.enabled()) {
+			_accel_raw_integrator.put(accel_raw, dt);
+			// sensor-frame m/s^2, before integration and the existing calibration
+			// and body-frame rotation. Raw statistics and clip counters stay raw.
+			_accel_integrator.put(_accel_rpm_notch.apply(accel_raw, accel.timestamp_sample, accel.device_id, accel_gap), dt);
+
+		} else
+#endif
+		{
+			_accel_integrator.put(accel_raw, dt);
+		}
+
+		// end
 
 		updated = true;
 
@@ -548,6 +600,21 @@ bool VehicleIMU::Publish()
 
 	if (_accel_integrator.reset(delta_velocity, imu.delta_velocity_dt)
 	    && _gyro_integrator.reset(delta_angle, imu.delta_angle_dt)) {
+		// add by jayjie
+		Vector3f diagnostic_delta_velocity = delta_velocity;
+#if !defined(CONSTRAINED_FLASH)
+
+		if (_accel_rpm_notch.enabled()) {
+			Vector3f raw_delta_velocity;
+			uint32_t raw_dt_us = 0;
+
+			if (_accel_raw_integrator.reset(raw_delta_velocity, raw_dt_us) && raw_dt_us == imu.delta_velocity_dt) {
+				diagnostic_delta_velocity = raw_delta_velocity;
+			}
+		}
+
+#endif
+		// end
 
 		if (_accel_calibration.enabled() && _gyro_calibration.enabled()) {
 
@@ -567,7 +634,9 @@ bool VehicleIMU::Publish()
 			_accel_calibration.SensorCorrectionsUpdate();
 			const float accel_dt_s = 1.e-6f * imu.delta_velocity_dt;
 			const Vector3f acceleration{_accel_calibration.Correct(delta_velocity / accel_dt_s)};
-			UpdateAccelVibrationMetrics(acceleration);
+			// add by jayjie
+			UpdateAccelVibrationMetrics(_accel_calibration.Correct(diagnostic_delta_velocity / accel_dt_s));
+			// end
 			const Vector3f delta_velocity_corrected{acceleration * accel_dt_s};
 
 			// vehicle_imu_status
@@ -702,6 +771,12 @@ void VehicleIMU::UpdateIntegratorConfiguration()
 		// relaxed minimum integration time required
 		_accel_integrator.set_reset_interval(roundf((accel_integral_samples - 0.5f) * accel_interval_us));
 		_accel_integrator.set_reset_samples(accel_integral_samples);
+		// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+		_accel_raw_integrator.set_reset_interval(roundf((accel_integral_samples - 0.5f) * accel_interval_us));
+		_accel_raw_integrator.set_reset_samples(accel_integral_samples);
+#endif
+		// end
 
 		_gyro_integrator.set_reset_interval(roundf((gyro_integral_samples - 0.5f) * gyro_interval_us));
 		_gyro_integrator.set_reset_samples(gyro_integral_samples);
@@ -756,6 +831,23 @@ void VehicleIMU::UpdateGyroVibrationMetrics(const Vector3f &angular_velocity)
 
 void VehicleIMU::PrintStatus()
 {
+	// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+	PX4_INFO_RAW("[vehicle_imu] %u ACC RPM notch: %s, sample rate %.1f Hz\n", _instance,
+		     _accel_rpm_notch.enabled() ? "enabled" : "disabled", (double)_accel_rpm_notch.sampleRateHz());
+
+	for (unsigned esc = 0; esc < AccelRpmNotch::MaxEscs; ++esc) {
+		for (unsigned harmonic = 0; harmonic < _accel_rpm_notch.harmonics(); ++harmonic) {
+			const float frequency = _accel_rpm_notch.frequency(esc, harmonic);
+
+			if (frequency > 0.f) {
+				PX4_INFO_RAW("  ESC %u harmonic %u: %.1f Hz\n", esc, harmonic + 1, (double)frequency);
+			}
+		}
+	}
+
+#endif
+	// end
 	PX4_INFO_RAW("[vehicle_imu] %" PRIu8 " - Accel: %" PRIu32 ", interval: %.1f us (SD %.1f us), Gyro: %" PRIu32
 		     ", interval: %.1f us (SD %.1f us)\n",
 		     _instance,

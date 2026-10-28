@@ -72,3 +72,62 @@ PARAM_DEFINE_INT32(SENS_IMU_AUTOCAL, 1);
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_IMU_CLPNOTI, 1);
+
+// add by jayjie
+/**
+ * Accelerometer RPM dynamic notch enable
+ *
+ * Filter sensor_accel before integration into vehicle_imu (estimator input).
+ * Requires mechanical RPM feedback in esc_status. Does not filter the separate
+ * vehicle_acceleration output. No FFT is used. Unavailable on constrained-flash builds.
+ * Verify estimator performance and CPU load before flight.
+ *
+ * @boolean
+ * @reboot_required true
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(IMU_ACC_DNF_EN, 0);
+
+/**
+ * Accelerometer RPM dynamic notch bandwidth
+ *
+ * Independent bandwidth for each motor harmonic. Configuration is loaded at startup.
+ *
+ * @unit Hz
+ * @min 5
+ * @max 30
+ * @decimal 1
+ * @reboot_required true
+ * @group Sensors
+ */
+PARAM_DEFINE_FLOAT(IMU_ACC_DNF_BW, 15.f);
+
+/**
+ * Accelerometer RPM dynamic notch harmonics
+ *
+ * Number of mechanical RPM harmonics per ESC and per IMU.
+ * Harmonics whose upper half-bandwidth reaches Nyquist are bypassed.
+ *
+ * @min 1
+ * @max 7
+ * @reboot_required true
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(IMU_ACC_DNF_HMC, 3);
+
+/**
+ * Accelerometer RPM dynamic notch minimum frequency
+ *
+ * At low nonzero RPM, park the fundamental at max(this value, bandwidth).
+ * Keep higher harmonics separated by at least half the bandwidth.
+ * Zero RPM or telemetry older than 3 seconds bypasses the motor's filters.
+ *
+ * @unit Hz
+ * @min 1
+ * @max 1000
+ * @decimal 1
+ * @reboot_required true
+ * @group Sensors
+ */
+PARAM_DEFINE_FLOAT(IMU_ACC_DNF_MIN, 25.f);
+// end

@@ -34,6 +34,11 @@
 #pragma once
 
 #include <Integrator.hpp>
+// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+#include "AccelRpmNotch.hpp"
+#endif
+// end
 
 #include <lib/mathlib/math/Limits.hpp>
 #include <lib/mathlib/math/WelfordMean.hpp>
@@ -117,6 +122,16 @@ private:
 	sensors::Integrator       _accel_integrator{};
 	sensors::IntegratorConing _gyro_integrator{};
 
+	// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+	// Owned and updated only by this VehicleIMU's WorkQueue. The parallel raw
+	// integrator preserves the existing vibration diagnostic when DNF is enabled.
+	AccelRpmNotch _accel_rpm_notch{};
+	uORB::Subscription _esc_status_sub{ORB_ID(esc_status)};
+	sensors::Integrator _accel_raw_integrator{};
+#endif
+	// end
+
 	uint32_t _imu_integration_interval_us{5000};
 
 	hrt_abstime _accel_timestamp_sample_last{0};
@@ -199,6 +214,14 @@ private:
 	perf_counter_t _gyro_generation_gap_perf{perf_alloc(PC_COUNT, MODULE_NAME": gyro data gap")};
 
 	DEFINE_PARAMETERS(
+		// add by jayjie
+#if !defined(CONSTRAINED_FLASH)
+		(ParamBool<px4::params::IMU_ACC_DNF_EN>) _param_imu_acc_dnf_en,
+		(ParamInt<px4::params::IMU_ACC_DNF_HMC>) _param_imu_acc_dnf_hmc,
+		(ParamFloat<px4::params::IMU_ACC_DNF_BW>) _param_imu_acc_dnf_bw,
+		(ParamFloat<px4::params::IMU_ACC_DNF_MIN>) _param_imu_acc_dnf_min,
+#endif
+		// end
 		(ParamInt<px4::params::IMU_INTEG_RATE>) _param_imu_integ_rate,
 		(ParamBool<px4::params::SENS_IMU_AUTOCAL>) _param_sens_imu_autocal,
 		(ParamBool<px4::params::SENS_IMU_CLPNOTI>) _param_sens_imu_notify_clipping

@@ -43,3 +43,10 @@ target_compile_options(vehicle_imu
 )
 
 target_link_libraries(vehicle_imu PRIVATE px4_work_queue sensor_calibration)
+
+# add by jayjie
+px4_add_unit_gtest(SRC AccelRpmNotchTest.cpp)
+if(BUILD_TESTING)
+	add_dependencies(unit-AccelRpmNotch uorb_headers)
+endif()
+# end
